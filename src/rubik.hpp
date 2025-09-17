@@ -5,7 +5,11 @@
 #include <unordered_map>
 #include <string>
 #include <SFML/Graphics.hpp>
+
+
+
 struct Cube {
+	// If it is unclear, the permutation means the index of the piece in the solved cube, so each value in the arrays correspond to a physical slot but NOT to a specific piece.
     uint8_t corner_perm[8];   // permutation of 8 corners (values 0-7)
     uint8_t corner_orient[8]; // orientation of each corner (values 0-2)
     uint8_t edge_perm[12];    // permutation of 12 edges (values 0-11)
@@ -37,6 +41,26 @@ struct Cube {
             {D, F}, {D, R}, {D, B}, {D, L},
             {F, R}, {B, R}, {B, L}, {F, L}
         };
+    bool parity() const {
+        // Calculate the parity of the cube based on corner and edge permutations
+        int corner_parity = 0;
+        for (int i = 0; i < 8; i++) {
+            for (int j = i + 1; j < 8; j++) {
+                if (corner_perm[i] > corner_perm[j]) {
+                    corner_parity++;
+                }
+            }
+        }
+        int edge_parity = 0;
+        for (int i = 0; i < 12; i++) {
+            for (int j = i + 1; j < 12; j++) {
+                if (edge_perm[i] > edge_perm[j]) {
+                    edge_parity++;
+                }
+            }
+        }
+        return (corner_parity + edge_parity) % 2 != 0;
+	}
 };
 
 struct Move {
@@ -44,8 +68,21 @@ struct Move {
     uint8_t corner_orient_delta[8]{};
     uint8_t edge_perm[12]{};
     uint8_t edge_orient_delta[12]{};
+    static Move identity() {
+        Move m;
+        for (int i = 0; i < 8; i++) {
+            m.corner_perm[i] = i;
+            m.corner_orient_delta[i] = 0;
+        }
+        for (int i = 0; i < 12; i++) {
+            m.edge_perm[i] = i;
+            m.edge_orient_delta[i] = 0;
+        }
+        return m;
+	}
 };
 
 void apply_move(Cube& cube, const Move& m);
 Move compose_moves(const Move& m1, const Move& m2);
 std::unordered_map<std::string, Move> generate_all_moves();
+Move parse_move(const std::string& move_str, const std::unordered_map<std::string, Move>& move_map);

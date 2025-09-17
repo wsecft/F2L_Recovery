@@ -13,140 +13,49 @@ inline static const std::unordered_map<Cube::sides, sf::Color> face_colors = {
     {Cube::L, sf::Color(255, 165, 0)} // Orange
 };
 
-// For each face, 9 sticker indices; we fill this
-/*std::map<Cube::sides, std::array<sf::Color, 9>> cube_to_facelets(const Cube& cube) {
+std::map<Cube::sides, std::array<sf::Color, 9>> cube_to_facelets(const Cube& cube) {
     std::map<Cube::sides, std::array<sf::Color, 9>> facelets;
 
-    // Initialize with base face color
-    for (auto [face, color] : face_colors)
-        facelets[face].fill(sf::Color::Black);
-
-    // Sticker layout per facelet index
-    std::map<Cube::sides, std::array<int, 9>> face_indices;
-    for (auto& [face, arr] : facelets)
-        for (int i = 0; i < 9; ++i) arr[i] = sf::Color::Black;
-
+    static const uint8_t edge_to_facelet[12][2] = {
+        {7,1},{5,1},{1,1},{3,1},//U edges
+        {1,7},{5,7},{7,7},{3,7},//D edges
+		{5,3},{3,5},{5,3},{3,5} //E slice edges
+    };
+    static const int corner_to_facelet[8][3] = {
+        {8,0,2}, {6, 0, 2}, {0, 0, 2}, {2, 0, 2}, // U corners
+		{2, 8, 6}, {0, 8, 6}, {6, 8, 6}, {8, 8, 6} // D corners
+    };
     // Face center colors (they're fixed)
     for (auto [face, color] : face_colors)
         facelets[face][4] = color;
 
-    // Apply corners
-    for (int i = 0; i < 8; ++i) {
-        int corner = cube.corner_perm[i];
-        int ori = cube.corner_orient[i];
-
-        for (int j = 0; j < 3; ++j) {
-            int face = Cube::corner_facelets[i][(j + ori) % 3];
-            sf::Color color = face_colors.at((Cube::sides)Cube::corner_facelets[corner][j]);
-
-            // Map each sticker to a facelet – approximation only:
-            // This uses a hardcoded lookup that should ideally be precomputed.
-            int pos = -1;
-            switch (face) {
-            case Cube::U:
-                if (i == 0) pos = 2;
-                else if (i == 1) pos = 0;
-                else if (i == 2) pos = 6;
-                else if (i == 3) pos = 8;
-                break;
-            case Cube::D:
-                if (i == 4) pos = 2;
-                else if (i == 5) pos = 0;
-                else if (i == 6) pos = 6;
-                else if (i == 7) pos = 8;
-                break;
-            case Cube::F:
-                if (i == 0) pos = 0;
-                else if (i == 1) pos = 2;
-                else if (i == 4) pos = 6;
-                else if (i == 5) pos = 8;
-                break;
-            case Cube::B:
-                if (i == 2) pos = 0;
-                else if (i == 3) pos = 2;
-                else if (i == 6) pos = 6;
-                else if (i == 7) pos = 8;
-                break;
-            case Cube::R:
-                if (i == 0) pos = 2;
-                else if (i == 3) pos = 0;
-                else if (i == 4) pos = 8;
-                else if (i == 7) pos = 6;
-                break;
-            case Cube::L:
-                if (i == 1) pos = 0;
-                else if (i == 2) pos = 2;
-                else if (i == 5) pos = 6;
-                else if (i == 6) pos = 8;
-                break;
-            }
-            if (pos >= 0)
-                facelets[(Cube::sides)face][pos] = color;
-        }
-    }
-
-    // Apply edges
     for (int i = 0; i < 12; ++i) {
         int edge = cube.edge_perm[i];
         int ori = cube.edge_orient[i];
 
         for (int j = 0; j < 2; ++j) {
-            int face = Cube::edge_facelets[i][(j + ori) % 2];
-            sf::Color color = face_colors.at((Cube::sides)Cube::edge_facelets[edge][j]);
-
-            int pos = -1;
-            switch (face) {
-            case Cube::U:
-                if (i == 0) pos = 1;  // UF
-                else if (i == 1) pos = 5;  // UR
-                else if (i == 2) pos = 7;  // UB
-                else if (i == 3) pos = 3;  // UL
-                break;
-            case Cube::D:
-                if (i == 4) pos = 1;  // DF
-                else if (i == 5) pos = 5;  // DR
-                else if (i == 6) pos = 7;  // DB
-                else if (i == 7) pos = 3;  // DL
-                break;
-            case Cube::F:
-                if (i == 0) pos = 7;  // UF
-                else if (i == 4) pos = 1;  // DF
-                else if (i == 8) pos = 5;  // FR
-                else if (i == 11) pos = 3;  // FL
-                break;
-            case Cube::B:
-                if (i == 2) pos = 7;  // UB
-                else if (i == 6) pos = 1;  // DB
-                else if (i == 9) pos = 3;  // BR
-                else if (i == 10) pos = 5;  // BL
-                break;
-            case Cube::R:
-                if (i == 1) pos = 3;  // UR
-                else if (i == 5) pos = 1;  // DR
-                else if (i == 8) pos = 3;  // FR
-                else if (i == 9) pos = 5;  // BR
-                break;
-            case Cube::L:
-                if (i == 3) pos = 1;  // UL
-                else if (i == 7) pos = 5;  // DL
-                else if (i == 10) pos = 3;  // BL
-                else if (i == 11) pos = 5;  // FL
-                break;
-            }
-
-            if (pos >= 0)
-                facelets[(Cube::sides)face][pos] = color;
+			Cube::sides face = (Cube::sides)Cube::edge_facelets[i][j];
+            int pos = edge_to_facelet[i][j];
+            sf::Color color=face_colors.at((Cube::sides)Cube::edge_facelets[edge][ori^j]);
+            facelets[(Cube::sides)face][pos] = color;
         }
     }
+    for (int i = 0; i < 8; ++i) {
+        int corner = cube.corner_perm[i];
+        int ori = cube.corner_orient[i];
 
-    for (auto [face, color] : face_colors)
-        facelets[face][4] = color;
-
+        for (int j = 0; j < 3; ++j) {
+            Cube::sides face = (Cube::sides)Cube::corner_facelets[i][j];
+            int pos = corner_to_facelet[i][j];
+            sf::Color color = face_colors.at((Cube::sides)Cube::corner_facelets[corner][(ori+j)%3]);
+            facelets[(Cube::sides)face][pos] = color;
+        }
+    }
     return facelets;
-}*/
+}
 
-std::map<Cube::sides, std::array<sf::Color, 9>> cube_to_facelets(const Cube& cube) {
-    // Format: { { {face0, pos0}, {face1, pos1} }, { {face0 (flipped), pos0}, {face1 (flipped), pos1} } }
+
+std::map<Cube::sides, std::array<sf::Color, 9>> cube_to_facelets_wrong(const Cube& cube) {
     static const uint8_t edge_to_facelet[12][2][2] = {
         // UF (0)
         {{Cube::U, 7}, {Cube::F, 1}},
