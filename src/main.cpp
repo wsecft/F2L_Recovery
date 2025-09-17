@@ -3,7 +3,7 @@
 #include <SFML/Graphics.hpp>
 #include <optional>
 
-
+//test
 // Apply a move to the cube using permutation and orientation deltas
 void apply_move_old(Cube& cube, const Move& m) {
     uint8_t new_corners[8];
