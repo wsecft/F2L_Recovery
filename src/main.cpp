@@ -75,7 +75,8 @@ int main() {
         if (has_input) {
             std::cout << "Received console input: " << input_buffer << "\n";
             has_input = false;
-            apply_move(cube, parse_move(input_buffer, all_moves));
+            if (input_buffer == "r") cube = Cube::identity();
+            apply_move_old(cube, parse_move(input_buffer, all_moves));
         }
 
         window.clear(sf::Color::Black);

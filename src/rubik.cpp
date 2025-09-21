@@ -194,20 +194,20 @@ std::unordered_map<std::string, Move> generate_all_moves() {
         },
 
         // === R (Right face clockwise) ===
-        Move {
-            {4, 1, 2, 0, 6, 5, 3, 7},                // corner_perm
-            {0, 0, 0, 0, 0, 0, 0, 0},                // corner_orient_delta (twists)
-            {0, 8, 2, 3, 4, 9, 6, 7,5,1,10,11},      // edge_perm
-            {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}         // edge_orient_delta (flip)
+        Move{
+            {4, 1, 2, 0, 7, 5, 6, 3},                // corner_perm
+            {1, 0, 0, 2, 2, 0, 0, 1},                // corner_orient_delta (twists)
+            {0, 8, 2, 3, 4, 9, 6, 7, 5, 1, 10,11},   //{0, 8, 2, 3, 4, 9, 6, 7,5,1,10,11},      // edge_perm
+            {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}     // edge_orient_delta (flip)
         },
-
         // === F (Front face clockwise) ===
         Move {
-            {1, 5, 2, 3, 0, 4, 6, 7},                // corner_perm
-            {1, 2, 0, 0, 2, 1, 0, 0},                // corner_orient_delta
-            {0, 1, 10, 3, 8, 5, 6, 2,4,9,7,11},      // edge_perm
-            {0, 0, 1, 0, 1, 0, 0, 1,1,0,1,0}         // edge_orient_delta
+            {1,5,2,3,0,4,6,7},                // corner_perm
+            {2,1,0,0,1,2,0,0},                // corner_orient_delta
+            {11,1,2,3,8,5,6,7,0,9,10,4},      // edge_perm
+            {1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1}        // edge_orient_delta
         },
+
 
         // === D (Down face clockwise) ===
         Move {
@@ -219,18 +219,18 @@ std::unordered_map<std::string, Move> generate_all_moves() {
 
         // === L (Left face clockwise) ===
         Move {
-            {4, 1, 2, 0, 7, 5, 6, 3},                // corner_perm
-            {2, 0, 0, 1, 1, 0, 0, 2},                // corner_orient_delta
-            {4, 1, 2,11,8,5,6,0,7,9,10,3},           // edge_perm
-            {1, 0, 0, 1,1,0,0,1,1,0,0,1}             // edge_orient_delta
+            {0, 2, 6, 3, 4, 1, 5, 7},                // corner_perm
+            {0, 2, 1, 0, 0, 1, 2, 0},                // corner_orient_delta
+            {0, 1, 2,10,4,5,6,11,8,9,7,3},           // edge_perm
+            {0,0,0,0,0,0,0,0,0,0,0,0}             // edge_orient_delta
         },
 
         // === B (Back face clockwise) ===
         Move {
-            {0, 1, 3, 7, 4, 5, 2, 6},                // corner_perm
-            {0, 0, 1, 2, 0, 0, 2, 1},                // corner_orient_delta
-            {0, 1, 2,11,4,9,6,7,8,5,10,3},           // edge_perm
-            {0, 0, 0, 1,0,1,0,0,0,1,1,1}             // edge_orient_delta
+            {0, 1, 3,7,4,5,2,6},                // corner_perm
+            {0, 0, 2, 1, 0 ,0, 1, 2},                // corner_orient_delta
+            {0, 1, 9, 3,4,5,10,7,8,6,2,11},           // edge_perm
+            {0, 0, 1, 0,0,0,1 ,0,0,1,1,0 }             // edge_orient_delta
         }
     };
 
@@ -250,7 +250,8 @@ std::unordered_map<std::string, Move> generate_all_moves() {
 
 // Splits a std::string by the space character and returns a Move representing doing the moves successively.
 Move parse_move(const std::string& move_str, const std::unordered_map<std::string, Move>& move_map) {
-	Move result=Move::identity();
+    if (move_str.size() == 1) return move_map.at(move_str);
+    Move result = Move::identity();
     std::istringstream iss(move_str);
     std::string token;
     while (iss >> token) {
