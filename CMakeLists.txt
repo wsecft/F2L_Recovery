@@ -35,5 +35,29 @@ file(GLOB_RECURSE source_files
 add_executable(${PROJECT_NAME} ${source_files})
 target_link_libraries(${PROJECT_NAME} PRIVATE SFML::System SFML::Window SFML::Graphics)
 
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${sfml_BINARY_DIR}/bin/$<CONFIG> $<TARGET_FILE_DIR:${PROJECT_NAME}>)
+if(WIN32)
+    # Windows: SFML DLLs are in bin/<CONFIG>
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${sfml_BINARY_DIR}/bin/$<CONFIG>
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>)
+endif()
+
+
+# Dependencies for Linux
+if(UNIX AND NOT APPLE)
+    execute_process(COMMAND bash -c "which apt-get")
+    if(NOT RESULT EQUAL 0)
+        message(FATAL_ERROR "apt-get not found. Install dependencies manually.")
+    endif()
+
+    message(STATUS "Installing SFML system dependencies via apt...")
+    execute_process(
+        COMMAND sudo apt-get update
+    )
+    execute_process(
+        COMMAND sudo apt-get install -y libxrandr-dev libxcursor-dev libxi-dev libudev-dev
+                                        libfreetype-dev libflac-dev libvorbis-dev
+                                        libgl1-mesa-dev libegl1-mesa-dev lib-harbuzz-dev
+    )
+endif()

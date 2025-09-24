@@ -2,6 +2,7 @@
 #include <array>
 #include <string_view>
 #include <cstdint>
+#include <cstring>
 #include <unordered_map>
 #include <string>
 #include <SFML/Graphics.hpp>

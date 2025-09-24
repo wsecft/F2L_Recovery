@@ -5,6 +5,8 @@
 #include <thread>
 #include <atomic>
 #include <iostream>
+#include <cstring>
+
 
 
 std::atomic<bool> has_input{ false };

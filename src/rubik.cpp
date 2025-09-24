@@ -3,13 +3,13 @@
 #include "rubik.hpp"
 
 // Vectorized mod 3 for 8-bit unsigned values using lookup (0-4 safe)
-inline __m128i mod3_epi8(__m128i x) {
+/*inline __m128i mod3_epi8(__m128i x) {
     const __m128i table = _mm_setr_epi8(0, 1, 2, 0, 1, 2, 0, 1,
         2, 0, 1, 2, 0, 1, 2, 0);
     return _mm_shuffle_epi8(table, x);
-}
+}*/
 
-void apply_move_wrong(Cube& cube, const Move& m) {
+/*void apply_move_wrong(Cube& cube, const Move& m) {
     // Load data into SIMD registers
     __m128i c_perm = _mm_loadl_epi64((__m128i*)cube.corner_perm);      // 8 bytes
     __m128i c_orient = _mm_loadl_epi64((__m128i*)cube.corner_orient);  // 8 bytes
@@ -52,7 +52,7 @@ void apply_move_wrong(Cube& cube, const Move& m) {
 
     std::memcpy(cube.edge_perm, tmp_edge_perm, 12);
     std::memcpy(cube.edge_orient, tmp_edge_orient, 12);
-}
+}*/
 
 void apply_move(Cube& cube, const Move& m) {
     // Save old cube state into compact local copies (only what's needed)
@@ -80,7 +80,7 @@ void apply_move(Cube& cube, const Move& m) {
 }
 
 
-#include <tmmintrin.h> // For SSSE3 _mm_shuffle_epi8
+/*#include <tmmintrin.h> // For SSSE3 _mm_shuffle_epi8
 #include <cstring>
 
 __m128i mullo_epi8(__m128i a, __m128i b) {
@@ -155,7 +155,7 @@ void apply_move_SIMD(Cube& cube, const Move& m) {
 
     std::memcpy(cube.edge_perm, tmp_e_perm, 12);
     std::memcpy(cube.edge_orient, tmp_e_orient, 12);
-}
+}*/
 
 
 
