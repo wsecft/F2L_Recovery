@@ -1,3 +1,19 @@
+# Dependencies for Linux
+#if(UNIX AND NOT APPLE)
+#    execute_process(COMMAND bash -c "which apt")
+#    if(RESULT EQUAL 0)
+#        message(FATAL_ERROR "apt not found. Install dependencies manually.")
+#    endif()
+
+#    message(STATUS "Installing SFML system dependencies via apt...")
+#    execute_process(
+#        COMMAND sudo apt install -y libxrandr-dev libxcursor-dev libxi-dev libudev-dev
+#                                        libfreetype-dev libflac-dev libvorbis-dev
+#                                        libgl1-mesa-dev libegl1-mesa-dev libharfbuzz-dev
+#    )
+#endif()
+
+
 cmake_minimum_required (VERSION 3.20)
 project("F2L_Recovery" VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -41,23 +57,4 @@ if(WIN32)
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${sfml_BINARY_DIR}/bin/$<CONFIG>
             $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-endif()
-
-
-# Dependencies for Linux
-if(UNIX AND NOT APPLE)
-    execute_process(COMMAND bash -c "which apt-get")
-    if(NOT RESULT EQUAL 0)
-        message(FATAL_ERROR "apt-get not found. Install dependencies manually.")
-    endif()
-
-    message(STATUS "Installing SFML system dependencies via apt...")
-    execute_process(
-        COMMAND sudo apt-get update
-    )
-    execute_process(
-        COMMAND sudo apt-get install -y libxrandr-dev libxcursor-dev libxi-dev libudev-dev
-                                        libfreetype-dev libflac-dev libvorbis-dev
-                                        libgl1-mesa-dev libegl1-mesa-dev lib-harbuzz-dev
-    )
 endif()
