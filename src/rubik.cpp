@@ -1,15 +1,14 @@
-#pragma once
 #include <immintrin.h>
 #include "rubik.hpp"
 
 // Vectorized mod 3 for 8-bit unsigned values using lookup (0-4 safe)
-/*inline __m128i mod3_epi8(__m128i x) {
+inline __m128i mod3_epi8(__m128i x) {
     const __m128i table = _mm_setr_epi8(0, 1, 2, 0, 1, 2, 0, 1,
         2, 0, 1, 2, 0, 1, 2, 0);
     return _mm_shuffle_epi8(table, x);
-}*/
+}
 
-/*void apply_move_wrong(Cube& cube, const Move& m) {
+void apply_move_wrong(Cube& cube, const Move& m) {
     // Load data into SIMD registers
     __m128i c_perm = _mm_loadl_epi64((__m128i*)cube.corner_perm);      // 8 bytes
     __m128i c_orient = _mm_loadl_epi64((__m128i*)cube.corner_orient);  // 8 bytes
@@ -52,10 +51,9 @@
 
     std::memcpy(cube.edge_perm, tmp_edge_perm, 12);
     std::memcpy(cube.edge_orient, tmp_edge_orient, 12);
-}*/
+}
 
 void apply_move(Cube& cube, const Move& m) {
-    // Save old cube state into compact local copies (only what's needed)
     uint8_t old_c_perm[8], old_c_orient[8];
     uint8_t old_e_perm[12], old_e_orient[12];
 
@@ -64,14 +62,12 @@ void apply_move(Cube& cube, const Move& m) {
     std::memcpy(old_e_perm, cube.edge_perm, 12);
     std::memcpy(old_e_orient, cube.edge_orient, 12);
 
-    // Apply corner move
     for (int i = 0; i < 8; ++i) {
         uint8_t src = m.corner_perm[i];
         cube.corner_perm[i] = old_c_perm[src];
         cube.corner_orient[i] = (old_c_orient[src] + m.corner_orient_delta[i]) % 3;
     }
 
-    // Apply edge move
     for (int i = 0; i < 12; ++i) {
         uint8_t src = m.edge_perm[i];
         cube.edge_perm[i] = old_e_perm[src];
@@ -80,7 +76,7 @@ void apply_move(Cube& cube, const Move& m) {
 }
 
 
-/*#include <tmmintrin.h> // For SSSE3 _mm_shuffle_epi8
+#include <tmmintrin.h> // For SSSE3 _mm_shuffle_epi8
 #include <cstring>
 
 __m128i mullo_epi8(__m128i a, __m128i b) {
@@ -155,7 +151,7 @@ void apply_move_SIMD(Cube& cube, const Move& m) {
 
     std::memcpy(cube.edge_perm, tmp_e_perm, 12);
     std::memcpy(cube.edge_orient, tmp_e_orient, 12);
-}*/
+}
 
 
 
@@ -177,6 +173,30 @@ Move compose_moves(const Move& a, const Move& b) {
     }
 
     return result;
+}
+
+std::ostream& operator<<(std::ostream& s, Move m) {
+    s << "corner_perm: ";
+    for (int i = 0; i < 8; i++) {
+        s << int(m.corner_perm[i]) << (i < 7 ? ' ' : '\n');
+    }
+
+    s << "corner_orient_delta: ";
+    for (int i = 0; i < 8; i++) {
+        s << int(m.corner_orient_delta[i]) << (i < 7 ? ' ' : '\n');
+    }
+
+    s << "edge_perm: ";
+    for (int i = 0; i < 12; i++) {
+        s << int(m.edge_perm[i]) << (i < 11 ? ' ' : '\n');
+    }
+
+    s << "edge_orient_delta: ";
+    for (int i = 0; i < 12; i++) {
+        s << int(m.edge_orient_delta[i]) << (i < 11 ? ' ' : '\n');
+    }
+
+    return s;
 }
 
 std::unordered_map<std::string, Move> generate_all_moves() {
@@ -259,3 +279,22 @@ Move parse_move(const std::string& move_str, const std::unordered_map<std::strin
     }
 	return result;
 };
+bool operator==(Move l, Move r) {
+    return std::memcmp(&l, &r, sizeof(Move)) == 0;
+}
+Move get_inverse(const Move& m) {
+    Move result=m;
+    for (int i = 0; i < 8; i++) {
+        //result.edge_orient_delta[i] = (m.edge_orient_delta[i] * 2) % 3;
+        result.corner_perm[m.corner_perm[i]] = i;
+    }
+    for (int i = 0; i < 12; i++) {
+        //result.edge_perm[i] ^= 1;
+        result.edge_perm[m.edge_perm[i]] = i;
+    }
+    //(std::uint64_t)result.edge_orient_delta = ~(std::uint64_t)m.edge_orient_delta;
+
+
+
+    return result;
+}

@@ -51,9 +51,6 @@ void apply_move_old(Cube& cube, const Move& m) {
 int main() {
     auto all_moves = generate_all_moves();
 	Cube cube = Cube::identity();
-    //apply_move(cube, all_moves["U"]);
-    //apply_move(cube, parse_move("U",all_moves));
-
 
     std::thread input_thread(console_input_thread);
     input_thread.detach(); // Don't wait for it on exit

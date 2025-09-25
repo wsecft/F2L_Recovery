@@ -81,9 +81,14 @@ struct Move {
         }
         return m;
 	}
+    
 };
 
+std::ostream& operator<<(std::ostream&, Move m);
+bool operator==(Move l, Move r);
 void apply_move(Cube& cube, const Move& m);
+void apply_move_SIMD(Cube& cube, const Move& m);
 Move compose_moves(const Move& m1, const Move& m2);
 std::unordered_map<std::string, Move> generate_all_moves();
 Move parse_move(const std::string& move_str, const std::unordered_map<std::string, Move>& move_map);
+Move get_inverse(const Move& m);
