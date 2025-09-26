@@ -1,5 +1,6 @@
-#include <immintrin.h>
 #include "rubik.hpp"
+#if defined(__SSSE3__)  // or __AVX2__, __SSE4_1__, etc.
+#include <immintrin.h>
 
 // Vectorized mod 3 for 8-bit unsigned values using lookup (0-4 safe)
 inline __m128i mod3_epi8(__m128i x) {
@@ -53,28 +54,6 @@ void apply_move_wrong(Cube& cube, const Move& m) {
     std::memcpy(cube.edge_orient, tmp_edge_orient, 12);
 }
 
-void apply_move(Cube& cube, const Move& m) {
-    uint8_t old_c_perm[8], old_c_orient[8];
-    uint8_t old_e_perm[12], old_e_orient[12];
-
-    std::memcpy(old_c_perm, cube.corner_perm, 8);
-    std::memcpy(old_c_orient, cube.corner_orient, 8);
-    std::memcpy(old_e_perm, cube.edge_perm, 12);
-    std::memcpy(old_e_orient, cube.edge_orient, 12);
-
-    for (int i = 0; i < 8; ++i) {
-        uint8_t src = m.corner_perm[i];
-        cube.corner_perm[i] = old_c_perm[src];
-        cube.corner_orient[i] = (old_c_orient[src] + m.corner_orient_delta[i]) % 3;
-    }
-
-    for (int i = 0; i < 12; ++i) {
-        uint8_t src = m.edge_perm[i];
-        cube.edge_perm[i] = old_e_perm[src];
-        cube.edge_orient[i] = old_e_orient[src] ^ m.edge_orient_delta[i];
-    }
-}
-
 
 #include <tmmintrin.h> // For SSSE3 _mm_shuffle_epi8
 #include <cstring>
@@ -92,7 +71,7 @@ __m128i mullo_epi8(__m128i a, __m128i b) {
     return _mm_packus_epi16(lo_mul, hi_mul); // Pack back to 8-bit
 }
 
-void apply_move_SIMD(Cube& cube, const Move& m) {
+void apply_move(Cube& cube, const Move& m) {
     alignas(16) uint8_t shuffle_mask_corner[16] = {};
     alignas(16) uint8_t shuffle_mask_edge[16] = {};
 
@@ -152,11 +131,33 @@ void apply_move_SIMD(Cube& cube, const Move& m) {
     std::memcpy(cube.edge_perm, tmp_e_perm, 12);
     std::memcpy(cube.edge_orient, tmp_e_orient, 12);
 }
+#else
+void apply_move(Cube& cube, const Move& m) {
+    uint8_t old_c_perm[8], old_c_orient[8];
+    uint8_t old_e_perm[12], old_e_orient[12];
+
+    std::memcpy(old_c_perm, cube.corner_perm, 8);
+    std::memcpy(old_c_orient, cube.corner_orient, 8);
+    std::memcpy(old_e_perm, cube.edge_perm, 12);
+    std::memcpy(old_e_orient, cube.edge_orient, 12);
+
+    for (int i = 0; i < 8; ++i) {
+        uint8_t src = m.corner_perm[i];
+        cube.corner_perm[i] = old_c_perm[src];
+        cube.corner_orient[i] = (old_c_orient[src] + m.corner_orient_delta[i]) % 3;
+    }
+
+    for (int i = 0; i < 12; ++i) {
+        uint8_t src = m.edge_perm[i];
+        cube.edge_perm[i] = old_e_perm[src];
+        cube.edge_orient[i] = old_e_orient[src] ^ m.edge_orient_delta[i];
+    }
+}
+#endif
 
 
 
-
-// Compose two moves: result = second followed by first (m2 • m1)
+// Compose two moves: result = second followed by first (m2 ï¿½ m1)
 Move compose_moves(const Move& a, const Move& b) {
     Move result{};
 
