@@ -64,6 +64,13 @@ struct Cube {
 	}
 };
 
+class Rubik {
+    static std::unordered_map<std::string,Move> move_map;
+    static void generate_all_moves();
+public:
+    static Move parse()
+}
+
 struct Move {
     uint8_t corner_perm[8]{};
     uint8_t corner_orient_delta[8]{};

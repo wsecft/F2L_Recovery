@@ -49,7 +49,6 @@ void apply_move_old(Cube& cube, const Move& m) {
 }
 
 int main() {
-    auto all_moves = generate_all_moves();
 	Cube cube = Cube::identity();
 
     std::cout << all_moves["F'"];
@@ -67,6 +66,8 @@ int main() {
             assert(get_inverse(all_moves[temp]) == all_moves[p.first]);
         }
     }
+
+    assert(compose_moves(all_moves["U"], all_moves["F'"])==parse_move("U F'", all_moves));
 
     std::thread input_thread(console_input_thread);
     input_thread.detach(); // Don't wait for it on exit

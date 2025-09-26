@@ -200,9 +200,11 @@ std::ostream& operator<<(std::ostream& s, Move m) {
     return s;
 }
 
-std::unordered_map<std::string, Move> generate_all_moves() {
-    std::unordered_map<std::string, Move> moves;
+Rubik::Rubik(){
+    generate_all_moves();
+}
 
+static void Rubik::generate_all_moves() {
     // Define U, R, F, B, L, D
     std::array<std::string, 6> base_names = { "U", "R", "F", "D", "L", "B" };
     std::array<Move, 6> base_moves = {
@@ -260,12 +262,10 @@ std::unordered_map<std::string, Move> generate_all_moves() {
         const auto& name = base_names[i];
         const auto& m = base_moves[i];
 
-        moves[name] = m;
-        moves[name + "2"] = compose_moves(m, m);
-        moves[name + "'"] = compose_moves(compose_moves(m, m), m);
+        move_map[name] = m;
+        move_map[name + "2"] = compose_moves(m, m);
+        move_map[name + "'"] = compose_moves(compose_moves(m, m), m);
     }
-
-    return moves;
 }
 
 
