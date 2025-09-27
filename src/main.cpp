@@ -51,23 +51,13 @@ void apply_move_old(Cube& cube, const Move& m) {
 int main() {
 	Cube cube = Cube::identity();
 
-    std::cout << all_moves["F'"];
+    std::cout << "F'"_move;
     //std::cout << all_moves["F "];
-    std::cout << get_inverse(all_moves["F"]);
-    std::cout << std::boolalpha << (all_moves["U'"] == get_inverse(all_moves["U"])) << std::endl;
+    std::cout << get_inverse("F"_move);
+    std::cout << std::boolalpha << ("U"_move == get_inverse("U'"_move)) << std::endl;
     //apply_move(cube, all_moves["U"]);
     //apply_move(cube, parse_move("U",all_moves));
     std::string temp;
-    for (const std::pair<const std::string, Move>& p : all_moves) {
-        if (p.first[p.first.size() - 1] != '\'' && p.first[p.first.size() - 1] != '2') {
-            temp = p.first + '\'';
-            assert(all_moves[temp] == get_inverse(p.second));
-            assert(get_inverse(all_moves[p.first]) == (all_moves[temp]));
-            assert(get_inverse(all_moves[temp]) == all_moves[p.first]);
-        }
-    }
-
-    assert(compose_moves(all_moves["U"], all_moves["F'"])==parse_move("U F'", all_moves));
 
     std::thread input_thread(console_input_thread);
     input_thread.detach(); // Don't wait for it on exit

@@ -64,13 +64,6 @@ struct Cube {
 	}
 };
 
-class Rubik {
-    static std::unordered_map<std::string,Move> move_map;
-    static void generate_all_moves();
-public:
-    static Move parse()
-}
-
 struct Move {
     uint8_t corner_perm[8]{};
     uint8_t corner_orient_delta[8]{};
@@ -87,15 +80,21 @@ struct Move {
             m.edge_orient_delta[i] = 0;
         }
         return m;
-	}
-    
+    }
+
+};
+
+class Rubik {
+    static std::unordered_map<std::string_view, Move> move_map;
+    static void generate_all_moves();
+public:
+    static Move parse(std::string_view);
 };
 
 std::ostream& operator<<(std::ostream&, Move m);
 bool operator==(Move l, Move r);
+Move operator ""_move(const char*, std::size_t);
 void apply_move(Cube& cube, const Move& m);
-void apply_move_SIMD(Cube& cube, const Move& m);
 Move compose_moves(const Move& m1, const Move& m2);
-std::unordered_map<std::string, Move> generate_all_moves();
 Move parse_move(const std::string& move_str, const std::unordered_map<std::string, Move>& move_map);
 Move get_inverse(const Move& m);

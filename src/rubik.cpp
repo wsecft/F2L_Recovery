@@ -204,7 +204,7 @@ Rubik::Rubik(){
     generate_all_moves();
 }
 
-static void Rubik::generate_all_moves() {
+void Rubik::generate_all_moves() {
     // Define U, R, F, B, L, D
     std::array<std::string, 6> base_names = { "U", "R", "F", "D", "L", "B" };
     std::array<Move, 6> base_moves = {
@@ -262,10 +262,15 @@ static void Rubik::generate_all_moves() {
         const auto& name = base_names[i];
         const auto& m = base_moves[i];
 
-        move_map[name] = m;
-        move_map[name + "2"] = compose_moves(m, m);
-        move_map[name + "'"] = compose_moves(compose_moves(m, m), m);
+        Rubik::move_map[name] = m;
+        Rubik::move_map[name + "2"] = compose_moves(m, m);
+        Rubik::move_map[name + "'"] = compose_moves(compose_moves(m, m), m);
     }
+}
+
+Move Rubik::parse(std::string_view str)
+{
+    Rubik::move_map[str];
 }
 
 
@@ -282,6 +287,10 @@ Move parse_move(const std::string& move_str, const std::unordered_map<std::strin
 };
 bool operator==(Move l, Move r) {
     return std::memcmp(&l, &r, sizeof(Move)) == 0;
+}
+Move operator""_move(const char* str, std::size_t size)
+{
+    return Rubik::parse(str, size);
 }
 Move get_inverse(const Move& m) {
     Move result=m;
