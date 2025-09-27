@@ -158,7 +158,7 @@ void apply_move(Cube& cube, const Move& m) {
 
 
 // Compose two moves: result = second followed by first (m2 � m1)
-Move compose_moves(const Move& a, const Move& b) {
+constexpr Move operator+(const Move& a, const Move& b) {
     Move result{};
 
     for (int i = 0; i < 8; ++i) {
@@ -176,6 +176,19 @@ Move compose_moves(const Move& a, const Move& b) {
     return result;
 }
 
+constexpr Move operator*(const Move& a, int num) {
+    Move result = Move::identity();
+    Move base = a;
+
+    while (num > 0) {
+        if (num & 1) {
+            result = result + base;
+        }
+        base = base + base;
+        num >>= 1;
+    }
+    return result;
+}
 std::ostream& operator<<(std::ostream& s, Move m) {
     s << "corner_perm: ";
     for (int i = 0; i < 8; i++) {
@@ -263,14 +276,15 @@ void Rubik::generate_all_moves() {
         const auto& m = base_moves[i];
 
         Rubik::move_map[name] = m;
-        Rubik::move_map[name + "2"] = compose_moves(m, m);
-        Rubik::move_map[name + "'"] = compose_moves(compose_moves(m, m), m);
+        Rubik::move_map[name + "2"] = m*2;
+        Rubik::move_map[name + "'"] = -m;
     }
 }
 
 Move Rubik::parse(std::string_view str)
 {
-    Rubik::move_map[str];
+    //Rubik::move_map[str];
+
 }
 
 
@@ -281,7 +295,7 @@ Move parse_move(const std::string& move_str, const std::unordered_map<std::strin
     std::istringstream iss(move_str);
     std::string token;
     while (iss >> token) {
-		result = compose_moves(result, move_map.at(token));
+		result = result+move_map.at(token));
     }
 	return result;
 };
@@ -292,19 +306,13 @@ Move operator""_move(const char* str, std::size_t size)
 {
     return Rubik::parse(str, size);
 }
-Move get_inverse(const Move& m) {
+Move operator-(const Move& m) {
     Move result=m;
     for (int i = 0; i < 8; i++) {
-        //result.edge_orient_delta[i] = (m.edge_orient_delta[i] * 2) % 3;
         result.corner_perm[m.corner_perm[i]] = i;
     }
     for (int i = 0; i < 12; i++) {
-        //result.edge_perm[i] ^= 1;
         result.edge_perm[m.edge_perm[i]] = i;
     }
-    //(std::uint64_t)result.edge_orient_delta = ~(std::uint64_t)m.edge_orient_delta;
-
-
-
     return result;
 }
