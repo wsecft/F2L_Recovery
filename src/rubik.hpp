@@ -84,9 +84,48 @@ struct Move {
 std::ostream& operator<<(std::ostream&, Move m);
 std::ostream& operator<<(std::ostream&, Cube m);
 void apply_move(Cube& cube, const Move& m);
-constexpr Move operator+(const Move& m1, const Move& m2);
-constexpr Move operator*(const Move&, const int);
-constexpr Move operator-(const Move& m);
+constexpr Move operator+(const Move& a, const Move& b) {
+    Move result{};
+
+    for (int i = 0; i < 8; ++i) {
+        result.corner_perm[i] = a.corner_perm[b.corner_perm[i]];
+        result.corner_orient[i] =
+            (b.corner_orient[i] + a.corner_orient[b.corner_perm[i]]) % 3;
+    }
+
+    for (int i = 0; i < 12; ++i) {
+        result.edge_perm[i] = a.edge_perm[b.edge_perm[i]];
+        result.edge_orient[i] =
+            b.edge_orient[i] ^ a.edge_orient[b.edge_perm[i]];
+    }
+
+    return result;
+}
+
+constexpr Move operator*(const Move& a, int num) {
+    Move result = Move::identity();
+    Move base = a;
+
+    while (num > 0) {
+        if (num & 1) {
+            result = result + base;
+        }
+        base = base + base;
+        num >>= 1;
+    }
+    return result;
+}
+
+constexpr Move operator-(const Move& m) {
+    Move result = m;
+    for (int i = 0; i < 8; i++) {
+        result.corner_perm[m.corner_perm[i]] = i;
+    }
+    for (int i = 0; i < 12; i++) {
+        result.edge_perm[m.edge_perm[i]] = i;
+    }
+    return result;
+}
 
 struct Rubik {
     // --- Define your six base moves as constexpr ---
