@@ -15,7 +15,7 @@ struct Cube {
     uint8_t corner_orient[8]; // orientation of each corner (values 0-2)
     uint8_t edge_perm[12];    // permutation of 12 edges (values 0-11)
     uint8_t edge_orient[12];  // orientation of each edge (values 0-1)
-    static Cube identity() {
+    constexpr static Cube identity() {
         Cube solved_cube;
         for (int i = 0; i < 8; i++) {
             solved_cube.corner_perm[i] = i;
@@ -69,7 +69,7 @@ struct Move {
     uint8_t corner_orient_delta[8]{};
     uint8_t edge_perm[12]{};
     uint8_t edge_orient_delta[12]{};
-    static Move identity() {
+    constexpr static Move identity() {
         Move m;
         for (int i = 0; i < 8; i++) {
             m.corner_perm[i] = i;
@@ -86,16 +86,16 @@ struct Move {
 
 class Rubik {
     static std::unordered_map<std::string_view, Move> move_map;
-    static void generate_all_moves();
+    constexpr static void generate_all_moves();
 public:
-    static Move parse(std::string_view);
+    constexpr static Move parse(std::string_view);
 };
 
-std::ostream& operator<<(std::ostream&, Move m);
-bool operator==(Move l, Move r);
-Move operator ""_move(const char*, std::size_t);
-void apply_move(Cube& cube, const Move& m);
-Move operator+(const Move& m1, const Move& m2);
-Move operator*(const Move&, const int);
-Move parse_move(const std::string& move_str, const std::unordered_map<std::string, Move>& move_map);
-Move operator-(const Move& m);
+constexpr std::ostream& operator<<(std::ostream&, Move m);
+constexpr std::ostream& operator<<(std::ostream&, Cube m);
+constexpr bool operator==(Move l, Move r);
+constexpr Move operator ""_move(const char*, std::size_t);
+constexpr void apply_move(Cube& cube, const Move& m);
+constexpr Move operator+(const Move& m1, const Move& m2);
+constexpr Move operator*(const Move&, const int);
+constexpr Move operator-(const Move& m);

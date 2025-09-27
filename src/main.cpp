@@ -52,9 +52,11 @@ int main() {
 	Cube cube = Cube::identity();
 
     std::cout << "F'"_move;
+    apply_move(cube, "F'"_move);
+    std::cout << cube;
     //std::cout << all_moves["F "];
-    std::cout << get_inverse("F"_move);
-    std::cout << std::boolalpha << ("U"_move == get_inverse("U'"_move)) << std::endl;
+    //std::cout << -"F"_move;
+    //std::cout << std::boolalpha << ("U"_move == get_inverse("U'"_move)) << std::endl;
     //apply_move(cube, all_moves["U"]);
     //apply_move(cube, parse_move("U",all_moves));
     std::string temp;
@@ -82,7 +84,7 @@ int main() {
             std::cout << "Received console input: " << input_buffer << "\n";
             has_input = false;
             if (input_buffer == "r") cube = Cube::identity();
-            apply_move_old(cube, parse_move(input_buffer, all_moves));
+            apply_move_old(cube, (input_buffer)_move);
         }
 
         window.clear(sf::Color::Black);

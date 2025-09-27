@@ -3,7 +3,7 @@
 #include <immintrin.h>
 
 // Vectorized mod 3 for 8-bit unsigned values using lookup (0-4 safe)
-inline __m128i mod3_epi8(__m128i x) {
+constexpr inline __m128i mod3_epi8(__m128i x) {
     const __m128i table = _mm_setr_epi8(0, 1, 2, 0, 1, 2, 0, 1,
         2, 0, 1, 2, 0, 1, 2, 0);
     return _mm_shuffle_epi8(table, x);
@@ -71,7 +71,7 @@ __m128i mullo_epi8(__m128i a, __m128i b) {
     return _mm_packus_epi16(lo_mul, hi_mul); // Pack back to 8-bit
 }
 
-void apply_move(Cube& cube, const Move& m) {
+constexpr void apply_move(Cube& cube, const Move& m) {
     alignas(16) uint8_t shuffle_mask_corner[16] = {};
     alignas(16) uint8_t shuffle_mask_edge[16] = {};
 
@@ -132,7 +132,7 @@ void apply_move(Cube& cube, const Move& m) {
     std::memcpy(cube.edge_orient, tmp_e_orient, 12);
 }
 #else
-void apply_move(Cube& cube, const Move& m) {
+constexpr void apply_move(Cube& cube, const Move& m) {
     uint8_t old_c_perm[8], old_c_orient[8];
     uint8_t old_e_perm[12], old_e_orient[12];
 
@@ -189,7 +189,7 @@ constexpr Move operator*(const Move& a, int num) {
     }
     return result;
 }
-std::ostream& operator<<(std::ostream& s, Move m) {
+constexpr std::ostream& operator<<(std::ostream& s, Move m) {
     s << "corner_perm: ";
     for (int i = 0; i < 8; i++) {
         s << int(m.corner_perm[i]) << (i < 7 ? ' ' : '\n');
@@ -213,11 +213,32 @@ std::ostream& operator<<(std::ostream& s, Move m) {
     return s;
 }
 
-Rubik::Rubik(){
-    generate_all_moves();
+constexpr std::ostream& operator<<(std::ostream& s, Cube m)
+{
+    s << "corner_perm: ";
+    for (int i = 0; i < 8; i++) {
+        s << int(m.corner_perm[i]) << (i < 7 ? ' ' : '\n');
+    }
+
+    s << "corner_orient_delta: ";
+    for (int i = 0; i < 8; i++) {
+        s << int(m.corner_orient[i]) << (i < 7 ? ' ' : '\n');
+    }
+
+    s << "edge_perm: ";
+    for (int i = 0; i < 12; i++) {
+        s << int(m.edge_perm[i]) << (i < 11 ? ' ' : '\n');
+    }
+
+    s << "edge_orient_delta: ";
+    for (int i = 0; i < 12; i++) {
+        s << int(m.edge_orient[i]) << (i < 11 ? ' ' : '\n');
+    }
+
+    return s;
 }
 
-void Rubik::generate_all_moves() {
+constexpr void Rubik::generate_all_moves() {
     // Define U, R, F, B, L, D
     std::array<std::string, 6> base_names = { "U", "R", "F", "D", "L", "B" };
     std::array<Move, 6> base_moves = {
@@ -281,32 +302,20 @@ void Rubik::generate_all_moves() {
     }
 }
 
-Move Rubik::parse(std::string_view str)
+constexpr Move Rubik::parse(std::string_view str)
 {
     //Rubik::move_map[str];
 
 }
 
-
-// Splits a std::string by the space character and returns a Move representing doing the moves successively.
-Move parse_move(const std::string& move_str, const std::unordered_map<std::string, Move>& move_map) {
-    if (move_str.size() == 1) return move_map.at(move_str);
-    Move result = Move::identity();
-    std::istringstream iss(move_str);
-    std::string token;
-    while (iss >> token) {
-		result = result+move_map.at(token));
-    }
-	return result;
-};
-bool operator==(Move l, Move r) {
+constexpr bool operator==(Move l, Move r) {
     return std::memcmp(&l, &r, sizeof(Move)) == 0;
 }
-Move operator""_move(const char* str, std::size_t size)
+constexpr Move operator""_move(const char* str, std::size_t size)
 {
     return Rubik::parse(str, size);
 }
-Move operator-(const Move& m) {
+constexpr Move operator-(const Move& m) {
     Move result=m;
     for (int i = 0; i < 8; i++) {
         result.corner_perm[m.corner_perm[i]] = i;
