@@ -41,6 +41,11 @@ FetchContent_Declare(SFML
     GIT_TAG master)
 FetchContent_MakeAvailable(SFML)
 
+FetchContent_Declare(frozen
+    GIT_REPOSITORY https://github.com/serge-sans-paille/frozen.git
+    GIT_TAG master)
+FetchContent_MakeAvailable(frozen)
+
 # Ajout des fichiers cpp et hpp.
 file(GLOB_RECURSE source_files
     "src/*.cpp"
@@ -49,7 +54,7 @@ file(GLOB_RECURSE source_files
 )
 
 add_executable(${PROJECT_NAME} ${source_files})
-target_link_libraries(${PROJECT_NAME} PRIVATE SFML::System SFML::Window SFML::Graphics)
+target_link_libraries(${PROJECT_NAME} PRIVATE SFML::System SFML::Window SFML::Graphics frozen::frozen)
 
 if(WIN32)
     # Windows: SFML DLLs are in bin/<CONFIG>

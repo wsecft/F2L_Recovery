@@ -30,7 +30,7 @@ void apply_move_old(Cube& cube, const Move& m) {
     for (int i = 0; i < 8; i++) {
         uint8_t old_index = m.corner_perm[i];
         new_corners[i] = cube.corner_perm[old_index];
-        new_corner_orient[i] = (cube.corner_orient[old_index] + m.corner_orient_delta[i]) % 3;
+        new_corner_orient[i] = (cube.corner_orient[old_index] + m.corner_orient[i]) % 3;
     }
 
     uint8_t new_edges[12];
@@ -39,7 +39,7 @@ void apply_move_old(Cube& cube, const Move& m) {
     for (int i = 0; i < 12; i++) {
         uint8_t old_index = m.edge_perm[i];
         new_edges[i] = cube.edge_perm[old_index];
-        new_edge_orient[i] = cube.edge_orient[old_index] ^ m.edge_orient_delta[i];
+        new_edge_orient[i] = cube.edge_orient[old_index] ^ m.edge_orient[i];
     }
 
     std::memcpy(cube.corner_perm, new_corners, 8);
@@ -84,7 +84,7 @@ int main() {
             std::cout << "Received console input: " << input_buffer << "\n";
             has_input = false;
             if (input_buffer == "r") cube = Cube::identity();
-            apply_move_old(cube, (input_buffer)_move);
+            apply_move_old(cube, Rubik::parse(input_buffer));
         }
 
         window.clear(sf::Color::Black);

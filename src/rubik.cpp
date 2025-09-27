@@ -1,7 +1,6 @@
 #include "rubik.hpp"
-#if defined(__SSSE3__)  // or __AVX2__, __SSE4_1__, etc.
 #include <immintrin.h>
-
+#if defined(__SSSE3__)  // or __AVX2__, __SSE4_1__, etc.
 // Vectorized mod 3 for 8-bit unsigned values using lookup (0-4 safe)
 constexpr inline __m128i mod3_epi8(__m128i x) {
     const __m128i table = _mm_setr_epi8(0, 1, 2, 0, 1, 2, 0, 1,
@@ -132,7 +131,7 @@ constexpr void apply_move(Cube& cube, const Move& m) {
     std::memcpy(cube.edge_orient, tmp_e_orient, 12);
 }
 #else
-constexpr void apply_move(Cube& cube, const Move& m) {
+void apply_move(Cube& cube, const Move& m) {
     uint8_t old_c_perm[8], old_c_orient[8];
     uint8_t old_e_perm[12], old_e_orient[12];
 
@@ -144,13 +143,13 @@ constexpr void apply_move(Cube& cube, const Move& m) {
     for (int i = 0; i < 8; ++i) {
         uint8_t src = m.corner_perm[i];
         cube.corner_perm[i] = old_c_perm[src];
-        cube.corner_orient[i] = (old_c_orient[src] + m.corner_orient_delta[i]) % 3;
+        cube.corner_orient[i] = (old_c_orient[src] + m.corner_orient[i]) % 3;
     }
 
     for (int i = 0; i < 12; ++i) {
         uint8_t src = m.edge_perm[i];
         cube.edge_perm[i] = old_e_perm[src];
-        cube.edge_orient[i] = old_e_orient[src] ^ m.edge_orient_delta[i];
+        cube.edge_orient[i] = old_e_orient[src] ^ m.edge_orient[i];
     }
 }
 #endif
@@ -163,14 +162,14 @@ constexpr Move operator+(const Move& a, const Move& b) {
 
     for (int i = 0; i < 8; ++i) {
         result.corner_perm[i] = a.corner_perm[b.corner_perm[i]];
-        result.corner_orient_delta[i] =
-            (b.corner_orient_delta[i] + a.corner_orient_delta[b.corner_perm[i]]) % 3;
+        result.corner_orient[i] =
+            (b.corner_orient[i] + a.corner_orient[b.corner_perm[i]]) % 3;
     }
 
     for (int i = 0; i < 12; ++i) {
         result.edge_perm[i] = a.edge_perm[b.edge_perm[i]];
-        result.edge_orient_delta[i] =
-            b.edge_orient_delta[i] ^ a.edge_orient_delta[b.edge_perm[i]];
+        result.edge_orient[i] =
+            b.edge_orient[i] ^ a.edge_orient[b.edge_perm[i]];
     }
 
     return result;
@@ -189,7 +188,7 @@ constexpr Move operator*(const Move& a, int num) {
     }
     return result;
 }
-constexpr std::ostream& operator<<(std::ostream& s, Move m) {
+std::ostream& operator<<(std::ostream& s, Move m) {
     s << "corner_perm: ";
     for (int i = 0; i < 8; i++) {
         s << int(m.corner_perm[i]) << (i < 7 ? ' ' : '\n');
@@ -197,7 +196,7 @@ constexpr std::ostream& operator<<(std::ostream& s, Move m) {
 
     s << "corner_orient_delta: ";
     for (int i = 0; i < 8; i++) {
-        s << int(m.corner_orient_delta[i]) << (i < 7 ? ' ' : '\n');
+        s << int(m.corner_orient[i]) << (i < 7 ? ' ' : '\n');
     }
 
     s << "edge_perm: ";
@@ -207,13 +206,13 @@ constexpr std::ostream& operator<<(std::ostream& s, Move m) {
 
     s << "edge_orient_delta: ";
     for (int i = 0; i < 12; i++) {
-        s << int(m.edge_orient_delta[i]) << (i < 11 ? ' ' : '\n');
+        s << int(m.edge_orient[i]) << (i < 11 ? ' ' : '\n');
     }
 
     return s;
 }
 
-constexpr std::ostream& operator<<(std::ostream& s, Cube m)
+std::ostream& operator<<(std::ostream& s, Cube m)
 {
     s << "corner_perm: ";
     for (int i = 0; i < 8; i++) {
@@ -238,7 +237,7 @@ constexpr std::ostream& operator<<(std::ostream& s, Cube m)
     return s;
 }
 
-constexpr void Rubik::generate_all_moves() {
+/*constexpr void Rubik::generate_all_moves() {
     // Define U, R, F, B, L, D
     std::array<std::string, 6> base_names = { "U", "R", "F", "D", "L", "B" };
     std::array<Move, 6> base_moves = {
@@ -300,21 +299,9 @@ constexpr void Rubik::generate_all_moves() {
         Rubik::move_map[name + "2"] = m*2;
         Rubik::move_map[name + "'"] = -m;
     }
-}
+}*/
 
-constexpr Move Rubik::parse(std::string_view str)
-{
-    //Rubik::move_map[str];
 
-}
-
-constexpr bool operator==(Move l, Move r) {
-    return std::memcmp(&l, &r, sizeof(Move)) == 0;
-}
-constexpr Move operator""_move(const char* str, std::size_t size)
-{
-    return Rubik::parse(str, size);
-}
 constexpr Move operator-(const Move& m) {
     Move result=m;
     for (int i = 0; i < 8; i++) {

@@ -55,7 +55,7 @@ std::map<Cube::sides, std::array<sf::Color, 9>> cube_to_facelets(const Cube& cub
 }
 
 
-std::map<Cube::sides, std::array<sf::Color, 9>> cube_to_facelets_wrong(const Cube& cube) {
+std::map<Cube::sides, std::array<sf::Color, 9>> cube_to_facelets_wrong(const Move& cube) {
     static const uint8_t edge_to_facelet[12][2][2] = {
         // UF (0)
         {{Cube::U, 7}, {Cube::F, 1}},
