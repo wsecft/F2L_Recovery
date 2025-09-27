@@ -171,7 +171,6 @@ struct Rubik {
         {0,0,1,0,0,0,1,0,0,1,1,0}
     };
 
-    // --- Create a constexpr frozen map with all 18 moves ---
     static constexpr auto move_map = frozen::make_unordered_map<char, const Move*, 6>({
         std::pair{'U', &U},
         std::pair{'R', &R},
@@ -181,11 +180,37 @@ struct Rubik {
         std::pair{'B', &B}
      });
 
-    // --- Parse a move string at compile-time ---
-    static constexpr Move parse(std::string_view str) {
-        // Note: frozen::unordered_map::at() throws at runtime if not found,
-        // in constexpr context you must ensure key exists
+
+    static constexpr Move parse_move(std::string_view str) {
+        if (str.size() == 2) {
+            if (str[1] == '2') return *move_map.at(str[0]) * 2;
+            if (str[1] == '\'') return -*move_map.at(str[0]);
+            throw std::runtime_error{ "Wtf bro ? Sus tbh" };
+        }
         return *move_map.at(str[0]);
+    }
+
+    static constexpr Move parse(std::string_view str) {
+        Move result = Move::identity();
+
+        while (!str.empty()) {
+            // Trim spaces
+            auto first_non_space = str.find_first_not_of(' ');
+            if (first_non_space == std::string_view::npos) break;
+            str.remove_prefix(first_non_space);
+
+            // Find end of token
+            auto space_pos = str.find(' ');
+            std::string_view token = str.substr(0, space_pos);
+
+            result = result + parse_move(token);
+
+            // Advance past token
+            if (space_pos == std::string_view::npos) break;
+            str.remove_prefix(space_pos + 1);
+        }
+
+        return result;
     }
 };
 
