@@ -13,7 +13,7 @@ inline static const std::unordered_map<Cube::sides, sf::Color> face_colors = {
     {Cube::L, sf::Color(255, 165, 0)} // Orange
 };
 
-std::map<Cube::sides, std::array<sf::Color, 9>> cube_to_facelets(const Cube& cube) {
+std::map<Cube::sides, std::array<sf::Color, 9>> cube_to_facelets(const Move& cube) {
     std::map<Cube::sides, std::array<sf::Color, 9>> facelets;
 
     static const uint8_t edge_to_facelet[12][2] = {
@@ -54,85 +54,6 @@ std::map<Cube::sides, std::array<sf::Color, 9>> cube_to_facelets(const Cube& cub
     return facelets;
 }
 
-
-std::map<Cube::sides, std::array<sf::Color, 9>> cube_to_facelets_wrong(const Move& cube) {
-    static const uint8_t edge_to_facelet[12][2][2] = {
-        // UF (0)
-        {{Cube::U, 7}, {Cube::F, 1}},
-        // UR (1)
-        {{Cube::U, 5}, {Cube::R, 1}},
-        // UB (2)
-        {{Cube::U, 1}, {Cube::B, 1}},
-        // UL (3)
-        {{Cube::U, 3}, {Cube::L, 1}},
-        // DF (4)
-        {{Cube::D, 1}, {Cube::F, 7}},
-        // DR (5)
-        {{Cube::D, 5}, {Cube::R, 7}},
-        // DB (6)
-        {{Cube::D, 7}, {Cube::B, 7}},
-        // DL (7)
-        {{Cube::D, 3}, {Cube::L, 7}},
-        // FR (8)
-        {{Cube::F, 5}, {Cube::R, 3}},
-        // BR (9)
-        {{Cube::B, 3}, {Cube::R, 5}},
-        // BL (10)
-        {{Cube::B, 5}, {Cube::L, 3}},
-        // FL (11)
-        {{Cube::F, 3}, {Cube::L, 5}},
-    };
-
-    static const int corner_to_facelet[8][3][2] = {
-        // URF (0)
-        {{Cube::U, 8}, {Cube::R, 0}, {Cube::F, 2}},
-        // UFL (1)
-        {{Cube::U, 6}, {Cube::F, 0}, {Cube::L, 2}},
-        // ULB (2)
-        {{Cube::U, 0}, {Cube::L, 0}, {Cube::B, 2}},
-        // UBR (3)
-        {{Cube::U, 2}, {Cube::B, 0}, {Cube::R, 2}},
-        // DFR (4)
-        {{Cube::D, 2}, {Cube::F, 8}, {Cube::R, 6}},
-        // DLF (5)
-        {{Cube::D, 0}, {Cube::L, 8}, {Cube::F, 6}},
-        // DBL (6)
-        {{Cube::D, 6}, {Cube::B, 8}, {Cube::L, 6}},
-        // DRB (7)
-        {{Cube::D, 8}, {Cube::R, 8}, {Cube::B, 6}}
-    };
-
-    std::map<Cube::sides, std::array<sf::Color, 9>> facelets;
-
-
-    // Face center colors (they're fixed)
-    for (auto [face, color] : face_colors)
-        facelets[face][4] = color;
-
-    for (int i = 0; i < 12; ++i) {
-        int edge = cube.edge_perm[i];
-        int ori = cube.edge_orient[i];
-
-        for (int j = 0; j < 2; ++j) {
-            auto [face, pos] = edge_to_facelet[edge][ori^j];
-            sf::Color color = face_colors.at((Cube::sides)Cube::edge_facelets[i][j]); // or use cube logic
-            facelets[(Cube::sides)face][pos] = color;
-        }
-    }
-    for (int i = 0; i < 8; ++i) {
-        int corner = cube.corner_perm[i];
-        int ori = cube.corner_orient[i];
-
-        for (int j = 0; j < 3; ++j) {
-            auto [face, pos] = corner_to_facelet[corner][(ori+j)%3];
-            sf::Color color = face_colors.at((Cube::sides)Cube::corner_facelets[i][j]);
-            facelets[(Cube::sides)face][pos] = color;
-        }
-    }
-	return facelets;
-
-}
-
 void draw_face(sf::RenderTarget& target, sf::Vector2f origin, float size, const std::array<sf::Color, 9>& colors) {
     for (int row = 0; row < 3; ++row) {
         for (int col = 0; col < 3; ++col) {
@@ -146,7 +67,7 @@ void draw_face(sf::RenderTarget& target, sf::Vector2f origin, float size, const 
     }
 }
 
-void draw_cube_net(sf::RenderTarget& target, const Cube& cube, float size, sf::Vector2f origin) {
+void draw_cube_net(sf::RenderTarget& target, const Move& cube, float size, sf::Vector2f origin) {
     auto facelets = cube_to_facelets(cube);
 
     // Net layout (3x4 grid):

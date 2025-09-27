@@ -49,10 +49,10 @@ void apply_move_old(Cube& cube, const Move& m) {
 }
 
 int main() {
-	Cube cube = Cube::identity();
+	Move cube = Move::identity();
 
     std::cout << "F'"_move;
-    apply_move(cube, "F'"_move);
+    cube=cube+ "F'"_move;
     std::cout << cube;
     //std::cout << all_moves["F "];
     //std::cout << -"F"_move;
@@ -83,8 +83,8 @@ int main() {
         if (has_input) {
             std::cout << "Received console input: " << input_buffer << "\n";
             has_input = false;
-            if (input_buffer == "r") cube = Cube::identity();
-            apply_move_old(cube, Rubik::parse(input_buffer));
+            if (input_buffer == "r") cube = Move::identity();
+            cube = cube + Rubik::parse(input_buffer);
         }
 
         window.clear(sf::Color::Black);
