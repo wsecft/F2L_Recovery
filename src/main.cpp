@@ -57,7 +57,7 @@ int main() {
         }
 
         window.clear(sf::Color::Black);
-        draw_cube_net(window, cube, 30.f, {0.f, 0.f});
+        draw_cube(window, cube, 30.f, {0.f, 0.f});
         window.display();
     }
     return 0;
