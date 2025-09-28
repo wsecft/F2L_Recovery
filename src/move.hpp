@@ -1,3 +1,5 @@
+#pragma once
+#include <iostream>
 struct Move {
     std::array<uint8_t, 8> cp{};
     std::array<uint8_t, 8> co{};
@@ -6,6 +8,22 @@ struct Move {
     std::array<uint8_t, 6> center_perm{};
 
     constexpr bool operator==(const Move&) const = default;
+    constexpr Move& operator+=(const Move& m) {
+        Move tmp{};
+
+        for (int i = 0; i < 8; ++i) {
+            tmp.cp[i] = cp[m.cp[i]];
+            tmp.co[i] = (m.co[i] + co[m.cp[i]]) % 3;
+        }
+
+        for (int i = 0; i < 12; ++i) {
+            tmp.ep[i] = ep[m.ep[i]];
+            tmp.eo[i] = eo[m.ep[i]] ^ m.eo[i];
+        }
+
+        *this = tmp;
+        return *this;
+    }
     constexpr static Move identity() {
         return Move{
             {0,1,2,3,4,5,6,7},       // cp
@@ -16,23 +34,9 @@ struct Move {
     }
 };
 
-std::ostream& operator<<(std::ostream&, Move m);
-constexpr Move operator+(const Move& a, const Move& b) {
-    Move result{};
-
-    for (int i = 0; i < 8; ++i) {
-        result.cp[i] = a.cp[b.cp[i]];
-        result.co[i] =
-            (b.co[i] + a.co[b.cp[i]]) % 3;
-    }
-
-    for (int i = 0; i < 12; ++i) {
-        result.ep[i] = a.ep[b.ep[i]];
-        result.eo[i] =
-            b.eo[i] ^ a.eo[b.ep[i]];
-    }
-
-    return result;
+constexpr Move operator+(Move a, const Move& b) {
+    a += b;   // reuse +=
+    return a; // returns by value
 }
 
 constexpr Move operator*(const Move& a, int num) {
@@ -49,7 +53,7 @@ constexpr Move operator*(const Move& a, int num) {
     return result;
 }
 
-constexpr Move operator-(const Move& m) {
+/*constexpr Move operator-(const Move& m) {
     Move result = m;
     for (int i = 0; i < 8; i++) {
         result.cp[m.cp[i]] = i;
@@ -58,4 +62,46 @@ constexpr Move operator-(const Move& m) {
         result.ep[m.ep[i]] = i;
     }
     return result;
+}*/
+
+constexpr Move operator-(const Move& m) {
+    Move result{}; // start from zeroed arrays, then fill everything
+
+    // inverse corner permutation and corner orientation (mod 3)
+    for (int i = 0; i < 8; ++i) {
+        result.cp[m.cp[i]] = i;
+        result.co[m.cp[i]] = (3 - m.co[i]) % 3; // negation mod 3
+    }
+
+    // inverse edge permutation and edge orientation (mod 2)
+    for (int i = 0; i < 12; ++i) {
+        result.ep[m.ep[i]] = i;
+        result.eo[m.ep[i]] = m.eo[i] % 2; // same as (2 - m.eo[i]) % 2
+    }
+
+    return result;
+}
+
+inline std::ostream& operator<<(std::ostream& s, Move m) {
+    s << "cp: ";
+    for (int i = 0; i < 8; i++) {
+        s << int(m.cp[i]) << (i < 7 ? ' ' : '\n');
+    }
+
+    s << "co: ";
+    for (int i = 0; i < 8; i++) {
+        s << int(m.co[i]) << (i < 7 ? ' ' : '\n');
+    }
+
+    s << "ep: ";
+    for (int i = 0; i < 12; i++) {
+        s << int(m.ep[i]) << (i < 11 ? ' ' : '\n');
+    }
+
+    s << "eo: ";
+    for (int i = 0; i < 12; i++) {
+        s << int(m.eo[i]) << (i < 11 ? ' ' : '\n');
+    }
+
+    return s;
 }

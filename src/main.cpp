@@ -23,12 +23,8 @@ void console_input_thread() {
 
 int main() {
 	Move cube = Move::identity();
-
-    std::cout << "F'"_move;
-    cube=cube+ "F'"_move;
-    cube = cube + Move::identity();
-    std::cout << cube;
-    std::string temp;
+    cube += -"R U R' U'"_move;
+    static_assert("R U R' U'"_move * 5 == -"R U R' U'"_move);
 
     std::thread input_thread(console_input_thread);
     input_thread.detach(); // Don't wait for it on exit

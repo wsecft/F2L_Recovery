@@ -1,4 +1,4 @@
-#include "rubik.hpp"
+#include "move.hpp"
 
 class F2LPartialSolver {
 public:

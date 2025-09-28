@@ -1,8 +1,6 @@
 #include <SFML/Graphics.hpp>
-#include <array>
 #include <map>
-#include <string>
-#include "rubik.hpp"
+#include "move.hpp"
 
 
 enum sides {
