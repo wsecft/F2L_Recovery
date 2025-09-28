@@ -25,7 +25,7 @@ inline static const std::unordered_map<sides, sf::Color> face_colors = {
     {F, sf::Color::Green},
     {B, sf::Color::Blue},
     {R, sf::Color::Red},
-    {L, sf::Color(255, 165, 0)} // Orange
+    {L, sf::Color(255, 110, 0)} // Orange
 };
 
 std::map<sides, std::array<sf::Color, 9>> cube_to_facelets(const Move& cube) {
@@ -41,8 +41,8 @@ std::map<sides, std::array<sf::Color, 9>> cube_to_facelets(const Move& cube) {
 		{2, 8, 6}, {0, 8, 6}, {6, 8, 6}, {8, 8, 6} // D corners
     };
     // Face center colors (they're fixed)
-    for (auto [face, color] : face_colors)
-        facelets[face][4] = color;
+    /*for (auto [face, color] : face_colors)
+        facelets[face][4] = color;*/
 
     for (int i = 0; i < 12; ++i) {
         int edge = cube.ep[i];
@@ -65,6 +65,10 @@ std::map<sides, std::array<sf::Color, 9>> cube_to_facelets(const Move& cube) {
             sf::Color color = face_colors.at((sides)corner_facelets[corner][(ori+j)%3]);
             facelets[(sides)face][pos] = color;
         }
+    }
+
+    for (int i = 0; i < 6; ++i) {
+        facelets[(sides)i][4] = face_colors.at((sides)cube.centers[i]);
     }
     return facelets;
 }

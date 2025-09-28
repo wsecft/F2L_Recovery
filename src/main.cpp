@@ -23,7 +23,7 @@ void console_input_thread() {
 
 int main() {
 	Move cube = Move::identity();
-    cube += -"R U R' U'"_move;
+    //cube += "S"_move;
     static_assert("R U R' U'"_move * 5 == -"R U R' U'"_move);
 
     std::thread input_thread(console_input_thread);
@@ -49,7 +49,16 @@ int main() {
             std::cout << "Received console input: " << input_buffer << "\n";
             has_input = false;
             if (input_buffer == "r") cube = Move::identity();
-            cube = cube + Rubik::parse(input_buffer);
+            else {
+                Move seq = Rubik::parse(input_buffer);
+                cube += seq;
+                int i = 1;
+                while (cube != Move::identity()) {
+                    cube += seq;
+                    i++;
+                }
+                std::cout << "Period : " << i << "\n";
+            }
         }
 
         window.clear(sf::Color::Black);

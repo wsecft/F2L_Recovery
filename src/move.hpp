@@ -5,7 +5,7 @@ struct Move {
     std::array<uint8_t, 8> co{};
     std::array<uint8_t, 12> ep{};
     std::array<uint8_t, 12> eo{};
-    std::array<uint8_t, 6> center_perm{};
+    std::array<uint8_t, 6> centers{};
 
     constexpr bool operator==(const Move&) const = default;
     constexpr Move& operator+=(const Move& m) {
@@ -21,6 +21,10 @@ struct Move {
             tmp.eo[i] = eo[m.ep[i]] ^ m.eo[i];
         }
 
+        for (int i = 0; i < 6; ++i) {
+            tmp.centers[i] = centers[m.centers[i]];
+        }
+
         *this = tmp;
         return *this;
     }
@@ -29,7 +33,8 @@ struct Move {
             {0,1,2,3,4,5,6,7},       // cp
             {0,0,0,0,0,0,0,0},       // co
             {0,1,2,3,4,5,6,7,8,9,10,11}, // ep
-            {0,0,0,0,0,0,0,0,0,0,0,0}    // eo
+            {0,0,0,0,0,0,0,0,0,0,0,0},    // eo
+            {0,1,2,3,4,5} // centers
         };
     }
 };
@@ -65,7 +70,7 @@ constexpr Move operator*(const Move& a, int num) {
 }*/
 
 constexpr Move operator-(const Move& m) {
-    Move result{}; // start from zeroed arrays, then fill everything
+    Move result;
 
     // inverse corner permutation and corner orientation (mod 3)
     for (int i = 0; i < 8; ++i) {
@@ -77,6 +82,10 @@ constexpr Move operator-(const Move& m) {
     for (int i = 0; i < 12; ++i) {
         result.ep[m.ep[i]] = i;
         result.eo[m.ep[i]] = m.eo[i] % 2; // same as (2 - m.eo[i]) % 2
+    }
+
+    for (int i = 0; i < 6; ++i) {
+        result.centers[m.centers[i]] = i;
     }
 
     return result;
@@ -101,6 +110,11 @@ inline std::ostream& operator<<(std::ostream& s, Move m) {
     s << "eo: ";
     for (int i = 0; i < 12; i++) {
         s << int(m.eo[i]) << (i < 11 ? ' ' : '\n');
+    }
+
+    s << "centers";
+    for (int i = 0; i < 6; i++) {
+        s << int(m.centers[i]) << (i < 5 ? ' ' : '\n');
     }
 
     return s;
