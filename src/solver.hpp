@@ -2,7 +2,7 @@
 
 class F2LPartialSolver {
 public:
-    Move findCandidateF2L(Move startState, Move endState){
-        startState = compose_moves();
+    Move findCandidateF2L(Move startState, Move endState) {
+        startState = endState+ -startState;
     }
-}
+};

@@ -4,17 +4,34 @@
 #include <string>
 #include "rubik.hpp"
 
-inline static const std::unordered_map<Cube::sides, sf::Color> face_colors = {
-    {Cube::U, sf::Color::White},
-    {Cube::D, sf::Color::Yellow},
-    {Cube::F, sf::Color::Green},
-    {Cube::B, sf::Color::Blue},
-    {Cube::R, sf::Color::Red},
-    {Cube::L, sf::Color(255, 165, 0)} // Orange
+
+enum sides {
+    U, R, F, D, L, B
 };
 
-std::map<Cube::sides, std::array<sf::Color, 9>> cube_to_facelets(const Move& cube) {
-    std::map<Cube::sides, std::array<sf::Color, 9>> facelets;
+inline static const int corner_facelets[8][3] = {
+    {U, R, F}, {U, F, L}, {U, L, B}, {U, B, R},
+    {D, F, R}, {D, L, F}, {D, B, L}, {D, R, B}
+};
+
+inline static const int edge_facelets[12][2] = {
+    {U, F}, {U, R}, {U, B}, {U, L},
+    {D, F}, {D, R}, {D, B}, {D, L},
+    {F, R}, {B, R}, {B, L}, {F, L}
+};
+
+
+inline static const std::unordered_map<sides, sf::Color> face_colors = {
+    {U, sf::Color::White},
+    {D, sf::Color::Yellow},
+    {F, sf::Color::Green},
+    {B, sf::Color::Blue},
+    {R, sf::Color::Red},
+    {L, sf::Color(255, 165, 0)} // Orange
+};
+
+std::map<sides, std::array<sf::Color, 9>> cube_to_facelets(const Move& cube) {
+    std::map<sides, std::array<sf::Color, 9>> facelets;
 
     static const uint8_t edge_to_facelet[12][2] = {
         {7,1},{5,1},{1,1},{3,1},//U edges
@@ -34,10 +51,10 @@ std::map<Cube::sides, std::array<sf::Color, 9>> cube_to_facelets(const Move& cub
         int ori = cube.edge_orient[i];
 
         for (int j = 0; j < 2; ++j) {
-			Cube::sides face = (Cube::sides)Cube::edge_facelets[i][j];
+			sides face = (sides)edge_facelets[i][j];
             int pos = edge_to_facelet[i][j];
-            sf::Color color=face_colors.at((Cube::sides)Cube::edge_facelets[edge][ori^j]);
-            facelets[(Cube::sides)face][pos] = color;
+            sf::Color color=face_colors.at((sides)edge_facelets[edge][ori^j]);
+            facelets[(sides)face][pos] = color;
         }
     }
     for (int i = 0; i < 8; ++i) {
@@ -45,10 +62,10 @@ std::map<Cube::sides, std::array<sf::Color, 9>> cube_to_facelets(const Move& cub
         int ori = cube.corner_orient[i];
 
         for (int j = 0; j < 3; ++j) {
-            Cube::sides face = (Cube::sides)Cube::corner_facelets[i][j];
+            sides face = (sides)corner_facelets[i][j];
             int pos = corner_to_facelet[i][j];
-            sf::Color color = face_colors.at((Cube::sides)Cube::corner_facelets[corner][(ori+j)%3]);
-            facelets[(Cube::sides)face][pos] = color;
+            sf::Color color = face_colors.at((sides)corner_facelets[corner][(ori+j)%3]);
+            facelets[(sides)face][pos] = color;
         }
     }
     return facelets;
@@ -86,6 +103,6 @@ void draw_cube_net(sf::RenderTarget& target, const Move& cube, float size, sf::V
 
     for (int f = 0; f < 6; ++f) {
         sf::Vector2f face_origin = origin + face_offsets[f];
-        draw_face(target, face_origin, size, facelets[(Cube::sides)f]);
+        draw_face(target, face_origin, size, facelets[(sides)f]);
     }
 }
