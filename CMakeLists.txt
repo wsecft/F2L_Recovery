@@ -1,7 +1,5 @@
 cmake_minimum_required (VERSION 3.20)
 project("F2L_Recovery" VERSION 1.0 LANGUAGES CXX)
-#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
 # Compile dynamiquement. 
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 set(SFML_STATIC_LIBRARIES FALSE)
@@ -47,3 +45,10 @@ if(WIN32)
             ${sfml_BINARY_DIR}/bin/$<CONFIG>
             $<TARGET_FILE_DIR:${PROJECT_NAME}>)
 endif()
+
+add_custom_target(run
+    COMMAND $<TARGET_FILE:F2L_Recovery>
+    DEPENDS F2L_Recovery
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Running F2L_Recovery..."
+)

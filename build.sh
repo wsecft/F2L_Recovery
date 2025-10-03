@@ -4,8 +4,8 @@ if [ ! -d build ]; then
         libxrandr-dev libxcursor-dev libxi-dev libudev-dev \
         libfreetype-dev libflac-dev libvorbis-dev \
         libgl1-mesa-dev libegl1-mesa-dev libharfbuzz-dev
+    mkdir build
 fi
 cd build
 cmake ..
-make
-bin/F2L_Recovery
+cmake --build . --target run
