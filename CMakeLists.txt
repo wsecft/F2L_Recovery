@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.20)
 project("F2L_Recovery" VERSION 1.0 LANGUAGES CXX)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Compile dynamiquement. 
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
