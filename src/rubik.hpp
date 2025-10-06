@@ -1,9 +1,7 @@
 #pragma once
-#include <array>
+
 #include <string_view>
-#include <cstdint>
 #include <cstring>
-#include <unordered_map>
 #include <SFML/Graphics.hpp>
 #include <frozen/unordered_map.h>
 #include "move.hpp"
@@ -149,7 +147,7 @@ struct Rubik {
     }
 };
 
-inline constexpr Move operator"" _move(const char* str, std::size_t size)
+inline constexpr Move operator""_move(const char* str, std::size_t size)
 {
     return Rubik::parse(std::string_view(str, size));
 }

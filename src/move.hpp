@@ -1,5 +1,7 @@
 #pragma once
 #include <iostream>
+#include <cstdint>
+#include <array>
 struct Move {
     std::array<uint8_t, 8> cp{};
     std::array<uint8_t, 8> co{};
