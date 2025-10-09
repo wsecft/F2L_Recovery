@@ -1,5 +1,6 @@
 #include "rubik.hpp"
 #include "draw.hpp"
+#include "solver.hpp"
 #include <SFML/Graphics.hpp>
 #include <optional>
 #include <thread>
@@ -7,7 +8,20 @@
 #include <iostream>
 #include <cstring>
 
+#include <chrono>
 
+Move test(std::string s,int n) {
+    Move cube=Move::identity();
+    auto start = std::chrono::system_clock::now();
+    Move seq= Rubik::parse(s);
+    for (int i = 0; i < n; i++)
+        seq = -seq;
+    auto end = std::chrono::system_clock::now();
+    auto elapsed =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+    std::cout << elapsed.count() << " ms";
+    return cube;
+}
 
 std::atomic<bool> has_input{ false };
 std::string input_buffer;
@@ -22,9 +36,8 @@ void console_input_thread() {
 } 
 
 int main() {
+    assert(F2LPartialSolver::findCandidateF2L("F R' F' r U R U' r' y2 R U R' D2 R'"_move+"R D2"_move, "r U R' U' r' F R F'"_move)=="R U' R' y2"_move);
 	Move cube = Move::identity();
-    //cube += "S"_move;
-    static_assert("R U R' U'"_move * 5 == -"R U R' U'"_move);
 
     std::thread input_thread(console_input_thread);
     input_thread.detach(); // Don't wait for it on exit
@@ -50,6 +63,7 @@ int main() {
             has_input = false;
             if (input_buffer == "r") cube = Move::identity();
             else {
+                auto start = std::chrono::system_clock::now();
                 Move seq = Rubik::parse(input_buffer);
                 cube += seq;
                 int i = 1;
@@ -57,6 +71,10 @@ int main() {
                     cube += seq;
                     i++;
                 }
+                auto end = std::chrono::system_clock::now();
+                auto elapsed =
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+                std::cout << elapsed.count() << " ns";
                 std::cout << "Period : " << i << "\n";
             }
         }
