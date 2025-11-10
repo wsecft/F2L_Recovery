@@ -36,7 +36,7 @@ void console_input_thread() {
 } 
 
 int main() {
-    assert(F2LPartialSolver::findCandidateF2L("F R' F' r U R U' r' y2 R U R' D2 R'"_move+"R D2"_move, "r U R' U' r' F R F'"_move)=="R U' R' y2"_move);
+    assert(F2LPartialSolver::findCandidateF2L("F R' F' r U R U' r' y2 R U R' D2 R'"_move+"R D2"_move, "r U R' U' r' F R F'"_move,2)=="R U' R' y2"_move);
 	Move cube = Move::identity();
 
     std::thread input_thread(console_input_thread);

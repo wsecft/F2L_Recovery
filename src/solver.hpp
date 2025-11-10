@@ -6,8 +6,9 @@ class F2LPartialSolver {
 public:
     static Move findCandidateF2L(Move startState, Move endState, int depth) {
         Move tmp=startState;
-        while(tmp!=endState){
+        /*while (tmp != endState) {
             
-        }
+        }*/
+        return tmp;
     }
 };
