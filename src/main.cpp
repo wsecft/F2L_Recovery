@@ -36,7 +36,7 @@ void console_input_thread() {
 } 
 
 int main() {
-    //assert(F2LPartialSolver::findCandidateF2L("F R' F' r U R U' r' y2 R U R' D2 R'"_move+"R D2"_move, "r U R' U' r' F R F'"_move,2)=="R U' R' y2"_move);
+    std::cout << F2LPartialSolver::findCandidateF2L("x2 U' L F' L2 R' B2"_move, -"F R' F' r U R U' r U' "_move, 3);
 	Move cube = Move::identity();
 
     std::thread input_thread(console_input_thread);
@@ -63,7 +63,7 @@ int main() {
             has_input = false;
             if (input_buffer == "r") cube = Move::identity();
             else {
-                auto start = std::chrono::system_clock::now();
+                /*auto start = std::chrono::system_clock::now();
                 Move seq = Rubik::parse(input_buffer);
                 cube += seq;
                 int i = 1;
@@ -75,7 +75,8 @@ int main() {
                 auto elapsed =
                     std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
                 std::cout << elapsed.count() << " ns";
-                std::cout << "Period : " << i << "\n";
+                std::cout << "Period : " << i << "\n";*/
+				cube += Rubik::parse(input_buffer);
             }
         }
 
