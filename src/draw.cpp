@@ -1,5 +1,6 @@
 #include <SFML/Graphics.hpp>
-#include <map>
+#include <array>
+#include <unordered_map>
 #include "move.hpp"
 
 
@@ -28,8 +29,8 @@ inline static const std::unordered_map<sides, sf::Color> face_colors = {
     {L, sf::Color(255, 110, 0)} // Orange
 };
 
-std::map<sides, std::array<sf::Color, 9>> cube_to_facelets(const Move& cube) {
-    std::map<sides, std::array<sf::Color, 9>> facelets;
+std::array<std::array<sf::Color, 9>, 6> cube_to_facelets(const Move& cube) {
+    std::array<std::array<sf::Color, 9>, 6> facelets{};
 
     static const uint8_t edge_to_facelet[12][2] = {
         {7,1},{5,1},{1,1},{3,1},//U edges
@@ -74,13 +75,13 @@ std::map<sides, std::array<sf::Color, 9>> cube_to_facelets(const Move& cube) {
 }
 
 void draw_face(sf::RenderTarget& target, sf::Vector2f origin, float size, const std::array<sf::Color, 9>& colors) {
+    sf::RectangleShape square({size - 1.f, size - 1.f});
+    square.setOutlineThickness(1.f);
+    square.setOutlineColor(sf::Color::Black);
     for (int row = 0; row < 3; ++row) {
         for (int col = 0; col < 3; ++col) {
-            sf::RectangleShape square({ size - 1.f, size - 1.f });
             square.setPosition({ origin.x + col * size, origin.y + row * size });
             square.setFillColor(colors[row * 3 + col]);
-            square.setOutlineThickness(1.f);
-            square.setOutlineColor(sf::Color::Black);
             target.draw(square);
         }
     }
