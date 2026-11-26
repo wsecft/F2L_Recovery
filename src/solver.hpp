@@ -12,13 +12,15 @@
 
 namespace detail {
 
-inline constexpr std::array<std::string_view, 8> triggers = {
+inline constexpr std::array<std::string_view, 16> triggers = {
     "R U R'", "R U' R'", "R U2 R'", "R' F R F'",
-    "R' U R", "R' U' R", "R' U2 R", "F R'F' R"
+    "R' U R", "R' U' R", "R' U2 R", "F R' F' R",
+    "L' U' L", "L U L'", "L' U L", "L U' L'",
+    "L' U' L U", "L U L' U'", "L' U2 L", "L U2 L'"
 };
 
-inline constexpr std::array<std::string_view, 5> transitions = {
-    "U", "U'", "U2", "", "y"
+inline constexpr std::array<std::string_view, 7> transitions = {
+    "U", "U'", "U2", "", "y", "y'", "y2"
 };
 
 consteval auto makeCombined()
@@ -49,6 +51,9 @@ inline constexpr auto combined = makeCombined();
 inline constexpr auto invCombined = makeInvCombined();
 
 } // namespace detail
+
+static_assert(detail::triggers.size() == 16);
+static_assert(detail::transitions.size() == 7);
 
 class F2LPartialSolver {
 public:
