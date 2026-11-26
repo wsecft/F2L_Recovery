@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstdint>
 #include <array>
+#include <functional>
 struct Move {
     std::array<uint8_t, 8> cp{};
     std::array<uint8_t, 8> co{};
@@ -121,3 +122,23 @@ inline std::ostream& operator<<(std::ostream& s, Move m) {
 
     return s;
 }
+
+namespace std {
+template <>
+struct hash<Move> {
+    size_t operator()(const Move& m) const noexcept {
+        auto mix = [](size_t h, uint8_t v) noexcept {
+            h ^= static_cast<size_t>(v) + 0x9e3779b97f4a7c15ULL
+                 + (h << 6) + (h >> 2);
+            return h;
+        };
+        size_t h = 0;
+        for (uint8_t v : m.cp) h = mix(h, v);
+        for (uint8_t v : m.co) h = mix(h, v);
+        for (uint8_t v : m.ep) h = mix(h, v);
+        for (uint8_t v : m.eo) h = mix(h, v);
+        for (uint8_t v : m.centers) h = mix(h, v);
+        return h;
+    }
+};
+} // namespace std

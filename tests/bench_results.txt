@@ -1,0 +1,8 @@
+case,depth,nodes,ms,result
+main,1,0,0,none
+main,2,0,0,none
+main,3,0,48,none
+main,4,0,3727,none
+provable-1,1,19,0,found
+provable-2,2,6706,0,found
+provable-3,3,874479,44,found
