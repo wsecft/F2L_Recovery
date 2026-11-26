@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <frozen/unordered_map.h>
@@ -114,33 +115,146 @@ struct Rubik {
      });
 
 
-    static constexpr Move parse_move(std::string_view str) {
-        if (str.size() == 2) {
-            if (str[1] == '2') return *move_map.at(str[0]) * 2;
-            if (str[1] == '\'') return -*move_map.at(str[0]);
-            throw std::runtime_error{ "Wtf bro ? Sus tbh" };
+    static constexpr bool is_space(char c) {
+        return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+    }
+
+    static constexpr bool is_face(char face) {
+        switch (face) {
+            case 'U':
+            case 'R':
+            case 'F':
+            case 'D':
+            case 'L':
+            case 'B':
+            case 'M':
+            case 'E':
+            case 'S':
+            case 'x':
+            case 'y':
+            case 'z':
+            case 'u':
+            case 'r':
+            case 'f':
+            case 'd':
+            case 'l':
+            case 'b':
+                return true;
+            default:
+                return false;
         }
-        return *move_map.at(str[0]);
+    }
+
+    static constexpr const Move* face_move(char face) {
+        switch (face) {
+            case 'U': return &U;
+            case 'R': return &R;
+            case 'F': return &F;
+            case 'D': return &D;
+            case 'L': return &L;
+            case 'B': return &B;
+            case 'M': return &M;
+            case 'E': return &E;
+            case 'S': return &S;
+            case 'x': return &x;
+            case 'y': return &y;
+            case 'z': return &z;
+            case 'u': return &u;
+            case 'r': return &r;
+            case 'f': return &f;
+            case 'd': return &d;
+            case 'l': return &l;
+            case 'b': return &b;
+            default: return nullptr;
+        }
+    }
+
+    static constexpr Move parse_move(std::string_view str) {
+        std::size_t i = 0;
+        while (i < str.size() && is_space(str[i])) ++i;
+        if (i == str.size()) throw std::invalid_argument{"empty move"};
+
+        const char face = str[i++];
+        const Move* move = face_move(face);
+        if (move == nullptr) {
+            if (face == 'w') throw std::invalid_argument{"wide move requires a face"};
+            throw std::invalid_argument{"invalid move face"};
+        }
+
+        if (i < str.size() && str[i] == 'w') {
+            if (face < 'A' || face > 'Z') throw std::invalid_argument{"invalid wide move"};
+            ++i;
+            char wide_face = '\0';
+            switch (face) {
+                case 'U': wide_face = 'u'; break;
+                case 'R': wide_face = 'r'; break;
+                case 'F': wide_face = 'f'; break;
+                case 'D': wide_face = 'd'; break;
+                case 'L': wide_face = 'l'; break;
+                case 'B': wide_face = 'b'; break;
+            }
+            move = face_move(wide_face);
+        }
+
+        while (i < str.size() && is_space(str[i])) ++i;
+        if (i == str.size()) return *move;
+
+        if (i + 1 < str.size() && str[i] == '2' && str[i + 1] == '\'') i += 2;
+        else if (i + 1 < str.size() && str[i] == '\'' && str[i + 1] == '2') i += 2;
+        else if (str[i] == '2') ++i;
+        else if (str[i] == '\'') ++i;
+        else throw std::invalid_argument{"invalid move modifier"};
+
+        while (i < str.size() && is_space(str[i])) ++i;
+        if (i != str.size()) throw std::invalid_argument{"unexpected move suffix"};
+
+        if (str.find("2") != std::string_view::npos)
+            return *move * 2;
+        if (str.find('\'') != std::string_view::npos)
+            return -*move;
+        return *move;
     }
 
     static constexpr Move parse(std::string_view str) {
         Move result = Move::identity();
+        std::size_t i = 0;
 
-        while (!str.empty()) {
-            // Trim spaces
-            auto first_non_space = str.find_first_not_of(' ');
-            if (first_non_space == std::string_view::npos) break;
-            str.remove_prefix(first_non_space);
+        while (i < str.size()) {
+            while (i < str.size() && is_space(str[i])) ++i;
+            if (i == str.size()) break;
 
-            // Find end of token
-            auto space_pos = str.find(' ');
-            std::string_view token = str.substr(0, space_pos);
+            const char face = str[i];
+            if (!is_face(face)) {
+                throw std::invalid_argument{"invalid move face"};
+            }
 
-            result = result + parse_move(token);
+            ++i;
+            const Move* move = face_move(face);
 
-            // Advance past token
-            if (space_pos == std::string_view::npos) break;
-            str.remove_prefix(space_pos + 1);
+            if (i < str.size() && str[i] == 'w') {
+                if (face < 'A' || face > 'Z') throw std::invalid_argument{"invalid wide move"};
+                ++i;
+                switch (face) {
+                    case 'U': move = &u; break;
+                    case 'R': move = &r; break;
+                    case 'F': move = &f; break;
+                    case 'D': move = &d; break;
+                    case 'L': move = &l; break;
+                    case 'B': move = &b; break;
+                }
+            }
+
+            if (i < str.size() && str[i] == '2') {
+                ++i;
+                if (i < str.size() && str[i] == '\'') ++i;
+                result = result + *move * 2;
+            } else if (i < str.size() && str[i] == '\'') {
+                ++i;
+                if (i < str.size() && str[i] == '2') ++i;
+                result = result + -*move;
+            } else {
+                result = result + *move;
+            }
         }
 
         return result;
