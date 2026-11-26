@@ -1,47 +1,49 @@
-#include "rubik.hpp"
 #include "draw.hpp"
 #include "solver.hpp"
+
 #include <SFML/Graphics.hpp>
-#include <optional>
-#include <thread>
+
 #include <atomic>
-#include <iostream>
-#include <cstring>
-
 #include <chrono>
+#include <iostream>
+#include <mutex>
+#include <optional>
+#include <queue>
+#include <random>
+#include <sstream>
+#include <stop_token>
+#include <string>
+#include <thread>
 
-Move test(std::string s,int n) {
-    Move cube=Move::identity();
-    auto start = std::chrono::system_clock::now();
-    Move seq= Rubik::parse(s);
-    for (int i = 0; i < n; i++)
-        seq = -seq;
-    auto end = std::chrono::system_clock::now();
-    auto elapsed =
-        std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-    std::cout << elapsed.count() << " ms";
-    return cube;
-}
-
-std::atomic<bool> has_input{ false };
-std::string input_buffer;
+namespace {
+std::mutex output_mutex;
+std::mutex input_mutex;
+std::queue<std::string> input_queue;
+std::atomic<bool> input_eof{false};
 
 void console_input_thread() {
     std::string line;
-    while (true) {
-        std::getline(std::cin, line);
-        input_buffer = line;
-        has_input = true;
+    while (std::getline(std::cin, line)) {
+        std::lock_guard lock(input_mutex);
+        input_queue.push(std::move(line));
     }
-} 
+    input_eof.store(true);
+}
+
+void print_line(const std::string& line) {
+    std::lock_guard lock(output_mutex);
+    std::cout << line << '\n';
+}
+}
 
 int main() {
-    std::cout << F2LPartialSolver::findCandidateF2L("x2 U' L F' L2 R' B2"_move, -"F R' F' r U R U' r U' "_move, 3);
-	Move cube = Move::identity();
-
-    std::thread input_thread(console_input_thread);
-    input_thread.detach(); // Don't wait for it on exit
+    Move cube = Move::identity();
+    std::jthread input_thread(console_input_thread);
     sf::RenderWindow window(sf::VideoMode({800, 600}), "Rubik's Cube");
+    window.setFramerateLimit(60);
+
+    std::jthread solve_thread;
+    std::atomic<bool> solver_running{false};
 
     while (window.isOpen())
     {
@@ -58,26 +60,68 @@ int main() {
             }
         }
 
-        if (has_input) {
-            std::cout << "Received console input: " << input_buffer << "\n";
-            has_input = false;
-            if (input_buffer == "r") cube = Move::identity();
-            else {
-                /*auto start = std::chrono::system_clock::now();
-                Move seq = Rubik::parse(input_buffer);
-                cube += seq;
-                int i = 1;
-                while (cube != Move::identity()) {
-                    cube += seq;
-                    i++;
-                }
-                auto end = std::chrono::system_clock::now();
-                auto elapsed =
-                    std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-                std::cout << elapsed.count() << " ns";
-                std::cout << "Period : " << i << "\n";*/
-				cube += Rubik::parse(input_buffer);
+        std::string line;
+        {
+            std::lock_guard lock(input_mutex);
+            if (!input_queue.empty()) {
+                line = std::move(input_queue.front());
+                input_queue.pop();
             }
+        }
+
+        if (!line.empty()) {
+            if (line == "r") {
+                cube = Move::identity();
+            } else if (line == "quit") {
+                window.close();
+            } else if (line.rfind("scramble", 0) == 0) {
+                int count = 20;
+                std::istringstream args(line);
+                std::string command;
+                args >> command >> count;
+                if (count < 0) {
+                    print_line("error: scramble count must be non-negative");
+                } else {
+                    std::mt19937 rng(static_cast<unsigned>(std::chrono::steady_clock::now()
+                        .time_since_epoch().count()));
+                    const char* moves[] = {"U","U'","U2","R","R'","R2",
+                                           "F","F'","F2","D","D'","D2",
+                                           "L","L'","L2","B","B'","B2"};
+                    for (int i = 0; i < count; ++i)
+                        cube += Rubik::parse(moves[rng() % 18]);
+                }
+            } else if (line == "solve") {
+                if (solver_running.exchange(true)) {
+                    print_line("solve already running");
+                } else {
+                    Move start = cube;
+                    solve_thread = std::jthread([start, &solver_running](std::stop_token stop) {
+                        f2l::SearchOptions options;
+                        options.max_depth = 4;
+                        options.timeout = std::chrono::milliseconds{5000};
+                        options.stop = stop;
+                        auto result = f2l::search(start, f2l::goal_f2l(start), options);
+                        if (result)
+                            print_line("solution: " + result->moves);
+                        else
+                            print_line("no solution within depth " +
+                                       std::to_string(options.max_depth));
+                        solver_running.store(false);
+                    });
+                }
+            } else {
+                try {
+                    cube += Rubik::parse(line);
+                } catch (const std::invalid_argument& error) {
+                    print_line(std::string("error: ") + error.what());
+                }
+            }
+        }
+
+        {
+            std::lock_guard lock(input_mutex);
+            if (input_eof.load() && input_queue.empty())
+                window.close();
         }
 
         window.clear(sf::Color::Black);
