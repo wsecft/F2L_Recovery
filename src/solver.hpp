@@ -7,6 +7,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <deque>
+#include <limits>
 #include <optional>
 #include <stop_token>
 #include <string>
@@ -151,6 +153,7 @@ struct SearchOptions {
     int max_depth = 4;
     std::chrono::milliseconds timeout{5000};
     std::stop_token stop{};
+    bool use_pair_pruning = false;
 };
 
 struct SearchResult {
@@ -211,6 +214,69 @@ bool verify(const Move& start, std::string_view moves, GoalCallable goal) {
     }
 }
 
+inline std::uint16_t pair_key(const Move& state, Slot slot) {
+    const std::uint16_t corner =
+        static_cast<std::uint16_t>(state.cp[slot.corner] * 3u +
+                                   state.co[slot.corner]);
+    const std::uint16_t edge =
+        static_cast<std::uint16_t>(state.ep[slot.edge] * 2u +
+                                   state.eo[slot.edge]);
+    return static_cast<std::uint16_t>(corner * 24u + edge);
+}
+
+inline const std::array<std::uint8_t, 576>& pair_distance_table(Slot slot) {
+    static const std::array<std::array<std::uint8_t, 576>, 4> tables = [] {
+        std::array<std::array<std::uint8_t, 576>, 4> result{};
+        const Slot slots[] = {FR, FL, BL, BR};
+        for (std::size_t si = 0; si < 4; ++si) {
+            result[si].fill(std::numeric_limits<std::uint8_t>::max());
+            Move current = Move::identity();
+            std::deque<Move> queue;
+            const std::uint16_t target =
+                static_cast<std::uint16_t>(slots[si].corner * 3u * 24u +
+                                           slots[si].edge * 2u);
+            result[si][target] = 0;
+            queue.push_back(current);
+            while (!queue.empty()) {
+                current = queue.front();
+                queue.pop_front();
+                std::uint16_t key = pair_key(current, slots[si]);
+                std::uint8_t distance = result[si][key];
+                for (const Move& macro : detail::combined) {
+                    Move next = current + macro;
+                    std::uint16_t next_key = pair_key(next, slots[si]);
+                    if (result[si][next_key] != std::numeric_limits<std::uint8_t>::max())
+                        continue;
+                    result[si][next_key] =
+                        static_cast<std::uint8_t>(distance + 1u);
+                    queue.push_back(next);
+                }
+            }
+        }
+        return result;
+    }();
+
+    if (slot.corner == FR.corner && slot.edge == FR.edge) return tables[0];
+    if (slot.corner == FL.corner && slot.edge == FL.edge) return tables[1];
+    if (slot.corner == BL.corner && slot.edge == BL.edge) return tables[2];
+    return tables[3];
+}
+
+inline std::uint8_t pair_distance(const Move& state, Slot slot) {
+    const std::uint16_t key = pair_key(state, slot);
+    return pair_distance_table(slot)[key];
+}
+
+inline std::uint8_t pair_lower_bound(const Move& state) {
+    const Slot slots[] = {FR, FL, BL, BR};
+    std::uint8_t result = 0;
+    for (Slot slot : slots) {
+        std::uint8_t distance = pair_distance(state, slot);
+        if (distance > result) result = distance;
+    }
+    return result;
+}
+
 template <class GoalCallable>
 std::optional<SearchResult> search(const Move& start, GoalCallable goal,
                                    const SearchOptions& options = {}) {
@@ -248,6 +314,10 @@ std::optional<SearchResult> search(const Move& start, GoalCallable goal,
                 return true;
             }
             if (remaining == 0) return false;
+            if (options.use_pair_pruning &&
+                remaining < pair_lower_bound(state)) {
+                return false;
+            }
 
             const int previous_remaining =
                 transposition.contains(state) ? transposition[state] : -1;
@@ -272,6 +342,11 @@ std::optional<SearchResult> search(const Move& start, GoalCallable goal,
         if (stopped) break;
     }
     return std::nullopt;
+}
+
+inline std::optional<SearchResult> recover(const Move& start, const Move& end,
+                                           const SearchOptions& options = {}) {
+    return search(start, goal_exact(end), options);
 }
 
 } // namespace f2l

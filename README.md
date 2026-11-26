@@ -68,6 +68,8 @@ cmake --build . --config Release
 - `tests/test_core.cpp`: cube invariants and parser regression tests.
 - `tests/test_solver.cpp`: goals, normalisation, search, and solver output tests.
 - `tests/test_real_solves.cpp`: pinned reco.nz 3x3 reconstruction fixtures.
+- `tests/test_canonical_f2l.cpp`: 41 representative reversible F2L macro
+  cases linked to a public 41-case index.
 - `tests/bench_solver.cpp`: solver benchmark (not registered with CTest).
 
 ## Solver behavior

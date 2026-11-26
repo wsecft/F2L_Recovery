@@ -23,6 +23,9 @@ int main() {
     }
 
     CHECK(f2l::normalise(identity + Rubik::y) == identity);
+    CHECK(f2l::pair_distance(identity, f2l::FR) == 0);
+    CHECK(f2l::pair_distance(Rubik::R, f2l::FR) > 0);
+    CHECK(f2l::pair_lower_bound(identity) == 0);
     for (const Move& rotation : f2l::rotations) {
         Move state = identity + Rubik::R + rotation;
         CHECK(f2l::normalise(state) == f2l::normalise(identity + Rubik::R));

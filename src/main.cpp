@@ -100,6 +100,7 @@ int main() {
                         options.max_depth = 4;
                         options.timeout = std::chrono::milliseconds{5000};
                         options.stop = stop;
+                        options.use_pair_pruning = true;
                         auto result = f2l::search(start, f2l::goal_f2l(start), options);
                         if (result)
                             print_line("solution: " + result->moves);
@@ -108,6 +109,40 @@ int main() {
                                        std::to_string(options.max_depth));
                         solver_running.store(false);
                     });
+                }
+            } else if (line.rfind("recover ", 0) == 0) {
+                std::size_t separator = line.find('|');
+                if (separator == std::string::npos) {
+                    print_line("error: recovery syntax: recover <start>|<end>");
+                } else {
+                    std::string start_text = line.substr(8, separator - 8);
+                    std::string end_text = line.substr(separator + 1);
+                    try {
+                        Move start = Rubik::parse(start_text);
+                        Move end = Rubik::parse(end_text);
+                        if (solver_running.exchange(true)) {
+                            print_line("solve already running");
+                        } else {
+                            solve_thread = std::jthread(
+                                [start, end, &solver_running](std::stop_token stop) {
+                                    f2l::SearchOptions options;
+                                    options.max_depth = 4;
+                                    options.timeout = std::chrono::milliseconds{5000};
+                                    options.stop = stop;
+                                    auto result = f2l::recover(start, end, options);
+                                    if (result &&
+                                        f2l::verify(start, result->moves,
+                                                    f2l::goal_exact(end)))
+                                        print_line("recovery: " + result->moves);
+                                    else
+                                        print_line("no solution within depth " +
+                                                   std::to_string(options.max_depth));
+                                    solver_running.store(false);
+                                });
+                        }
+                    } catch (const std::invalid_argument& error) {
+                        print_line(std::string("error: ") + error.what());
+                    }
                 }
             } else {
                 try {
