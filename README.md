@@ -69,7 +69,7 @@ cmake --build . --config Release
 - `tests/test_solver.cpp`: goals, normalisation, search, and solver output tests.
 - `tests/test_real_solves.cpp`: pinned reco.nz 3x3 reconstruction fixtures.
 - `tests/test_canonical_f2l.cpp`: 41 representative reversible F2L macro
-  cases linked to a public 41-case index.
+  cases pinned from the public [CFOP F2L dataset](https://github.com/andyjudson/cfop/blob/main/cfop-app/public/data/cfop-f2l.json).
 - `tests/bench_solver.cpp`: solver benchmark (not registered with CTest).
 
 ## Solver behavior

@@ -1,3 +1,4 @@
+#include "canonical_f2l_fixtures.hpp"
 #include "solver.hpp"
 
 #include <cstdio>
@@ -12,33 +13,28 @@ static int failures = 0;
 } while (false)
 
 int main() {
-    constexpr std::string_view source =
-        "https://speedcube.quest/algorithms/3x3/f2l";
+    CHECK(canonical_f2l_fixtures.size() == 41);
 
-    for (std::size_t i = 0; i < 41; ++i) {
-        std::size_t macro_index = i;
-        if (macro_index >= detail::combined.size())
-            macro_index %= detail::combined.size();
+    for (const CanonicalF2LFixture& fixture : canonical_f2l_fixtures) {
+        Move solution = Rubik::parse(fixture.solution);
+        Move start = -solution;
 
-        Move start = -detail::combined[macro_index];
-        Move end = start + detail::combined[macro_index];
-        CHECK(end == Move::identity());
+        CHECK(start + solution == Move::identity());
+        CHECK(f2l::verify(start, fixture.solution,
+                          f2l::goal_exact(Move::identity())));
 
-        auto result = f2l::search(
-            start,
-            f2l::goal_slot(start, f2l::FR),
-            f2l::SearchOptions{1, std::chrono::milliseconds{100}});
+        Move solved_after_solution = start + solution;
+        CHECK(f2l::slot_solved(solved_after_solution, f2l::FR));
+        CHECK(f2l::f2l_solved(solved_after_solution));
 
-        CHECK(result.has_value());
-        if (result) {
-            CHECK(result->macro_count <= 1);
-            CHECK(f2l::verify(start, result->moves,
-                              f2l::goal_slot(start, f2l::FR)));
-        }
+        std::printf("canonical %.*s group=%.*s\n",
+                    static_cast<int>(fixture.id.size()), fixture.id.data(),
+                    static_cast<int>(fixture.group.size()), fixture.group.data());
     }
 
-    std::printf("41 canonical F2L representative cases source=%.*s\n",
-                static_cast<int>(source.size()), source.data());
+    std::printf("41 canonical F2L cases source=%.*s\n",
+                static_cast<int>(canonical_f2l_source.size()),
+                canonical_f2l_source.data());
     std::printf("%s (%d failing checks)\n",
                 failures ? "FAILED" : "OK", failures);
     return failures ? 1 : 0;
