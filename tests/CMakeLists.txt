@@ -8,3 +8,7 @@ add_test(NAME f2l_solver_tests COMMAND f2l_solver_tests)
 
 add_executable(f2l_solver_bench bench_solver.cpp)
 target_link_libraries(f2l_solver_bench PRIVATE f2l_core)
+
+add_executable(f2l_real_solve_tests test_real_solves.cpp)
+target_link_libraries(f2l_real_solve_tests PRIVATE f2l_core)
+add_test(NAME f2l_real_solve_tests COMMAND f2l_real_solve_tests)
