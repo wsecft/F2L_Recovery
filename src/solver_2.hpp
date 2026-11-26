@@ -1,6 +1,12 @@
+#pragma once
+
 #include "rubik.hpp"
+#include <array>
 #include <bit>
+#include <cstddef>
+#include <cstdint>
 #include <frozen/unordered_set.h>
+#include <string_view>
 
 // specialization for Move
 template <> struct frozen::elsa<Move> {

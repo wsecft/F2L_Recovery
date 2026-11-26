@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure headless core
+        run: >-
+          cmake -S . -B build
+          -DF2L_BUILD_APP=OFF
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_COMPILER=g++
+          -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -D_GLIBCXX_ASSERTIONS"
+      - name: Build core tests
+        run: cmake --build build --parallel
+      - name: Run core tests
+        run: ctest --test-dir build --output-on-failure --no-tests=error
+
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SFML dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxrandr-dev libxcursor-dev libxi-dev libudev-dev \
+            libfreetype-dev libflac-dev libvorbis-dev \
+            libgl1-mesa-dev libegl1-mesa-dev libharfbuzz-dev
+      - name: Configure application
+        run: cmake -S . -B build-app -DCMAKE_BUILD_TYPE=Release
+      - name: Build application
+        run: cmake --build build-app --config Release --parallel

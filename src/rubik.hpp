@@ -1,8 +1,8 @@
 #pragma once
 
+#include <stdexcept>
 #include <string_view>
-#include <cstring>
-#include <SFML/Graphics.hpp>
+#include <utility>
 #include <frozen/unordered_map.h>
 #include "move.hpp"
 

@@ -1,69 +1,71 @@
-#include "move.hpp"
-#include <cmath>
-#include <vector>
+#pragma once
+
+#include <array>
+#include <cassert>
+#include <cstddef>
 #include <cstdint>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "rubik.hpp"
+
+namespace detail {
+
+inline constexpr std::array<std::string_view, 8> triggers = {
+    "R U R'", "R U' R'", "R U2 R'", "R' F R F'",
+    "R' U R", "R' U' R", "R' U2 R", "F R'F' R"
+};
+
+inline constexpr std::array<std::string_view, 5> transitions = {
+    "U", "U'", "U2", "", "y"
+};
+
+consteval auto makeCombined()
+{
+    std::array<Move, triggers.size() * transitions.size()> arr{};
+    for (std::size_t ti = 0; ti < triggers.size(); ++ti) {
+        for (std::size_t ui = 0; ui < transitions.size(); ++ui) {
+            const std::size_t k = ti * transitions.size() + ui;
+            arr[k] = Rubik::parse(triggers[ti]) + Rubik::parse(transitions[ui]);
+        }
+    }
+    return arr;
+}
+
+consteval auto makeInvCombined()
+{
+    std::array<Move, triggers.size() * transitions.size()> arr{};
+    for (std::size_t ti = 0; ti < triggers.size(); ++ti) {
+        for (std::size_t ui = 0; ui < transitions.size(); ++ui) {
+            const std::size_t k = ti * transitions.size() + ui;
+            arr[k] = -Rubik::parse(transitions[ui]) + -Rubik::parse(triggers[ti]);
+        }
+    }
+    return arr;
+}
+
+inline constexpr auto combined = makeCombined();
+inline constexpr auto invCombined = makeInvCombined();
+
+} // namespace detail
+
 class F2LPartialSolver {
-    inline static constexpr std::array<std::string_view, 8> triggers = {
-        "R U R'", "R U' R'", "R U2 R'", "R' F R F'",
-        "R' U R", "R' U' R", "R' U2 R",  "F R'F' R"
-    };
-
-    inline static constexpr std::array<std::string_view, 5> transitions = {
-        "U", "U'", "U2", "", "y"
-    };
-
-    template<size_t T, size_t U>
-    static consteval auto makeCombined() {
-        std::array<Move, T* U> arr{};
-        for (size_t ti = 0; ti < T; ++ti) {
-            for (size_t ui = 0; ui < U; ++ui) {
-                size_t k = ti * U + ui;
-
-                Move tmp = Rubik::parse(triggers[ti]);
-                tmp += Rubik::parse(transitions[ui]);   // trigger + transition
-
-                arr[k] = tmp;
-            }
-        }
-        return arr;
-    }
-
-    template<size_t T, size_t U>
-    static consteval auto makeInvCombined() {
-        std::array<Move, T* U> arr{};
-        for (size_t ti = 0; ti < T; ++ti) {
-            for (size_t ui = 0; ui < U; ++ui) {
-                size_t k = ti * U + ui;
-
-                Move tmp = -Rubik::parse(transitions[ui]); // inverse transition
-                tmp += -Rubik::parse(triggers[ti]);        // inverse trigger
-
-                arr[k] = tmp;
-            }
-        }
-        return arr;
-    }
-
 public:
-
-    inline static constexpr auto combined =
-        makeCombined<triggers.size(), transitions.size()>();
-
-    inline static constexpr auto invCombined =
-        makeInvCombined<triggers.size(), transitions.size()>();
-
+    inline static constexpr const auto& combined = detail::combined;
+    inline static constexpr const auto& invCombined = detail::invCombined;
 
     static std::vector<int>
         findCandidateF2L_(const Move& startState, const Move& endState, int depth)
     {
         using size_t = std::size_t;
 
-        const size_t T = triggers.size();
-        const size_t U = transitions.size();
+        const size_t T = detail::triggers.size();
+        const size_t U = detail::transitions.size();
         const size_t B = T * U; // branching factor
 
-        auto apply = [&](int idx, Move& s) { s += combined[idx]; };
-        auto undo = [&](int idx, Move& s) { s += invCombined[idx]; };
+        auto apply = [&](int idx, Move& s) { s += detail::combined[idx]; };
+        auto undo = [&](int idx, Move& s) { s += detail::invCombined[idx]; };
 
         Move tmp = startState;
 
@@ -136,10 +138,10 @@ public:
         auto v = findCandidateF2L_(startState, endState, depth);
         std::string ret;
         for (int k : v) {
-            size_t i = k / transitions.size(); // trigger index
-            size_t j = k % transitions.size();
-            ret += std::string(triggers[i]) + " " + std::string(transitions[j]);
-            if (transitions[i] != "") ret += " ";
+            size_t i = k / detail::transitions.size(); // trigger index
+            size_t j = k % detail::transitions.size();
+            ret += std::string(detail::triggers[i]) + " " + std::string(detail::transitions[j]);
+            if (detail::transitions[i] != "") ret += " ";
         }
         assert(Rubik::parse(ret) == endState +- startState);
         return ret;
