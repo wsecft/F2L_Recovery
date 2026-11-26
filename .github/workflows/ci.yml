@@ -23,6 +23,39 @@ jobs:
       - name: Run core tests
         run: ctest --test-dir build --output-on-failure --no-tests=error
 
+  clang-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Clang
+        run: sudo apt-get update && sudo apt-get install -y clang
+      - name: Configure headless core with Clang
+        run: >-
+          cmake -S . -B build-clang
+          -DF2L_BUILD_APP=OFF
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_COMPILER=clang++
+          -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -D_GLIBCXX_ASSERTIONS"
+      - name: Build and test
+        run: |
+          cmake --build build-clang --parallel
+          ctest --test-dir build-clang --output-on-failure --no-tests=error
+
+  msvc-core:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure headless core with MSVC
+        run: >-
+          cmake -S . -B build-msvc
+          -DF2L_BUILD_APP=OFF
+          -DCMAKE_BUILD_TYPE=Debug
+          -G "Visual Studio 17 2022"
+      - name: Build and test
+        run: |
+          cmake --build build-msvc --config Debug --parallel
+          ctest --test-dir build-msvc -C Debug --output-on-failure --no-tests=error
+
   app:
     runs-on: ubuntu-latest
     steps:
