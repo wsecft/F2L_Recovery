@@ -1,4 +1,5 @@
 #include "draw.hpp"
+#include "scramble.hpp"
 #include "solver.hpp"
 
 #include <SFML/Graphics.hpp>
@@ -12,7 +13,6 @@
 #include <mutex>
 #include <optional>
 #include <queue>
-#include <random>
 #include <sstream>
 #include <stop_token>
 #include <string>
@@ -86,13 +86,10 @@ int main() {
                 if (count < 0) {
                     print_line("error: scramble count must be non-negative");
                 } else {
-                    std::mt19937 rng(static_cast<unsigned>(std::chrono::steady_clock::now()
-                        .time_since_epoch().count()));
-                    const char* moves[] = {"U","U'","U2","R","R'","R2",
-                                           "F","F'","F2","D","D'","D2",
-                                           "L","L'","L2","B","B'","B2"};
-                    for (int i = 0; i < count; ++i)
-                        cube += Rubik::parse(moves[rng() % 18]);
+                    const auto seed = static_cast<std::uint32_t>(
+                        std::chrono::steady_clock::now()
+                            .time_since_epoch().count());
+                    cube = cube + Rubik::parse(random_scramble(count, seed));
                 }
             } else if (line == "solve") {
                 if (solver_running.exchange(true)) {

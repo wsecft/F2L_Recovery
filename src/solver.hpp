@@ -11,11 +11,14 @@
 #include <deque>
 #include <limits>
 #include <optional>
+#ifndef __EMSCRIPTEN__
 #include <stop_token>
+#endif
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace detail {
@@ -65,6 +68,15 @@ static_assert(detail::transitions.size() == 7);
 
 namespace f2l {
 
+#ifdef __EMSCRIPTEN__
+// Browser cancellation terminates the dedicated Worker running this search.
+struct SearchStopToken {
+    bool stop_requested() const noexcept { return false; }
+};
+#else
+using SearchStopToken = std::stop_token;
+#endif
+
 struct Slot {
     std::uint8_t corner;
     std::uint8_t edge;
@@ -99,6 +111,37 @@ inline constexpr std::array<Move, 24> rotations = [] {
     }
     return out;
 }();
+
+inline const std::array<std::string, 24>& rotation_notations() {
+    static const std::array<std::string, 24> notations = [] {
+        std::array<std::string, 24> out{};
+        std::array<bool, 24> assigned{};
+        assigned[0] = true;
+        const std::array<std::pair<Move, std::string_view>, 3> bases{{
+            {Rubik::x, "x"}, {Rubik::y, "y"}, {Rubik::z, "z"}
+        }};
+        for (std::size_t i = 0; i < rotations.size(); ++i) {
+            for (const auto& [base, name] : bases) {
+                for (int power = 1; power <= 3; ++power) {
+                    const Move candidate = rotations[i] + base * power;
+                    for (std::size_t j = 0; j < rotations.size(); ++j) {
+                        if (!assigned[j] && rotations[j] == candidate) {
+                            out[j] = out[i];
+                            if (!out[j].empty()) out[j] += ' ';
+                            out[j] += name;
+                            if (power == 2) out[j] += '2';
+                            else if (power == 3) out[j] += '\'';
+                            assigned[j] = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return out;
+    }();
+    return notations;
+}
 
 inline Move normalise(const Move& state) {
     Move inverse_centers = Move::identity();
@@ -154,7 +197,7 @@ inline std::uint16_t solved_bits(const Move& state) {
 struct SearchOptions {
     int max_depth = 4;
     std::chrono::milliseconds timeout{5000};
-    std::stop_token stop{};
+    SearchStopToken stop{};
     bool use_pair_pruning = false;
 };
 
@@ -660,6 +703,93 @@ inline std::optional<SearchResult> search_f2l_target(
         }
         if (next_frontier.empty()) return std::nullopt;
         frontier = std::move(next_frontier);
+    }
+    return std::nullopt;
+}
+
+struct ReconstructionResult {
+    SearchResult search;
+    Move start;
+    Move f2l_state;
+    std::size_t inspection_index = 0;
+    std::string cross_face;
+    std::string inspection_moves;
+    std::size_t compatible_frame_count = 0;
+    std::string compatible_inspections;
+};
+
+inline std::optional<ReconstructionResult> reconstruct_unknown_f2l(
+    std::string_view scramble_text, std::string_view cross_text,
+    std::string_view last_layer_text, const SearchOptions& options = {},
+    std::size_t beam_width = 5000) {
+    const Move scramble = Rubik::parse(scramble_text);
+    const Move cross = Rubik::parse(cross_text);
+    const Move last_layer = Rubik::parse(last_layer_text);
+    const Move target = -last_layer;
+    if (!f2l_solved(target))
+        throw std::invalid_argument(
+            "last-layer sequence does not lead to an F2L-solved state");
+
+    struct Candidate {
+        std::size_t inspection_index;
+        Move start;
+    };
+    std::vector<Candidate> candidates;
+    for (std::size_t i = 0; i < rotations.size(); ++i) {
+        const Move& inspection = rotations[i];
+        const Move start = inspection + scramble + -inspection + cross;
+        if (cross_solved(start))
+            candidates.push_back({i, start});
+    }
+    if (candidates.empty())
+        throw std::invalid_argument(
+            "the cross sequence does not solve a cross in any inspection frame");
+
+    std::string compatible_inspections;
+    for (const Candidate& candidate : candidates) {
+        if (!compatible_inspections.empty())
+            compatible_inspections += ", ";
+        const std::string& notation =
+            rotation_notations()[candidate.inspection_index];
+        compatible_inspections += notation.empty() ? "identity" : notation;
+    }
+
+    constexpr std::array<std::string_view, 6> face_names{
+        "U", "R", "F", "D", "L", "B"
+    };
+    const auto deadline = std::chrono::steady_clock::now() + options.timeout;
+    const Move identity = Move::identity();
+    const Goal completes_solve = [last_layer, identity](const Move& state) {
+        return f2l_solved(state) &&
+               normalise(state + last_layer) == identity;
+    };
+
+    for (const Candidate& candidate : candidates) {
+        if (options.stop.stop_requested()) break;
+        const auto remaining = std::chrono::duration_cast<
+            std::chrono::milliseconds>(
+                deadline - std::chrono::steady_clock::now());
+        if (remaining <= std::chrono::milliseconds::zero()) break;
+
+        SearchOptions candidate_options = options;
+        candidate_options.timeout = remaining;
+        const auto result = search_f2l_target(
+            candidate.start, target, candidate_options, beam_width);
+        if (!result ||
+            !verify(candidate.start, result->moves, completes_solve))
+            continue;
+
+        const std::uint8_t cross_face = rotations[
+            candidate.inspection_index].centers[3];
+        return ReconstructionResult{
+            *result, candidate.start,
+            candidate.start + Rubik::parse(result->moves),
+            candidate.inspection_index,
+            std::string(face_names[cross_face]),
+            rotation_notations()[candidate.inspection_index],
+            candidates.size(),
+            compatible_inspections
+        };
     }
     return std::nullopt;
 }

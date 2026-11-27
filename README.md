@@ -37,6 +37,33 @@ cmake --build build-app --parallel
 ./build-app/F2L_Recovery
 ```
 
+### Browser search tool (WebAssembly)
+
+On Ubuntu, install the build and smoke-test prerequisites:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential cmake emscripten nodejs python3
+```
+
+Then configure and build the optional browser engine:
+
+```bash
+emcmake cmake -S . -B build-wasm \
+  -DF2L_BUILD_APP=OFF -DF2L_BUILD_TESTS=OFF -DF2L_BUILD_WEB=ON \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build build-wasm --parallel
+node tests/wasm_smoke.mjs
+python3 -m http.server 8000 --directory build-wasm/web
+```
+
+Open `http://localhost:8000`. Searches run in a Web Worker and use the C++
+engine compiled to WebAssembly. The page supports exact-state, F2L, per-slot,
+and F2L-target searches, plus missing-F2L reconstruction from a scramble,
+known cross solution, and known last-layer algorithm. Reconstruction tries
+all 24 cube frames, reports the detected cross orientation, and verifies the
+recovered sequence against the last layer.
+
 ### Windows
 
 ```bat
@@ -66,9 +93,12 @@ cmake --build . --config Release
 - `src/move.hpp`: cube state representation and composition.
 - `src/rubik.hpp`: base moves and strict move-string parser.
 - `src/solver.hpp`: F2L goals, normalisation, macro search, verification,
-  and the legacy `F2LPartialSolver` compatibility wrapper.
+  generalized missing-F2L reconstruction, and the legacy `F2LPartialSolver`
+  compatibility wrapper.
 - `src/main.cpp`: SFML and interactive console application.
-- `src/draw.cpp`: cube facelet conversion and rendering.
+- `src/cube_view.hpp`: shared cube-to-facelet conversion.
+- `src/draw.cpp`: SFML rendering.
+- `src/wasm_bindings.cpp` and `web/`: WebAssembly bindings and browser tool.
 - `tests/test_core.cpp`: cube invariants and parser regression tests.
 - `tests/test_solver.cpp`: goals, normalisation, search, and solver output tests.
 - `tests/test_real_solves.cpp`: pinned reco.nz and CubeDB 3x3 reconstructions,

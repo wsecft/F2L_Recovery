@@ -18,6 +18,13 @@ int main() {
 
     CHECK(detail::triggers.size() == 16);
     CHECK(detail::transitions.size() == 7);
+    CHECK(f2l::rotation_notations()[0].empty());
+    CHECK(f2l::rotation_notations()[2] == "x2");
+    for (std::size_t i = 1; i < f2l::rotations.size(); ++i) {
+        CHECK(!f2l::rotation_notations()[i].empty());
+        CHECK(Rubik::parse(f2l::rotation_notations()[i]) ==
+              f2l::rotations[i]);
+    }
     for (std::size_t i = 0; i < detail::combined.size(); ++i) {
         CHECK(detail::combined[i] + detail::invCombined[i] == identity);
     }

@@ -2,6 +2,7 @@ cmake_minimum_required (VERSION 3.20)
 project("F2L_Recovery" VERSION 1.0 LANGUAGES CXX)
 option(F2L_BUILD_APP "Build the SFML application" ON)
 option(F2L_BUILD_TESTS "Build tests" ON)
+option(F2L_BUILD_WEB "Build the WebAssembly browser engine" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -53,6 +54,40 @@ if(F2L_BUILD_APP)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Running F2L_Recovery..."
     )
+endif()
+
+if(F2L_BUILD_WEB)
+    if(NOT EMSCRIPTEN)
+        message(FATAL_ERROR "F2L_BUILD_WEB requires the Emscripten toolchain")
+    endif()
+
+    add_executable(f2l_web src/wasm_bindings.cpp)
+    target_link_libraries(f2l_web PRIVATE f2l_core)
+    target_compile_options(f2l_web PRIVATE -fexceptions)
+    target_link_options(f2l_web PRIVATE
+        --bind
+        --no-entry
+        -fexceptions
+        -sDISABLE_EXCEPTION_CATCHING=0
+        -sMODULARIZE=1
+        -sEXPORT_ES6=1
+        -sEXPORT_NAME=createF2LEngine
+        -sENVIRONMENT=web,worker,node
+        -sALLOW_MEMORY_GROWTH=1
+        -sFILESYSTEM=0
+        -sNO_EXIT_RUNTIME=1
+    )
+    set_target_properties(f2l_web PROPERTIES
+        SUFFIX ".js"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/web"
+    )
+    add_custom_target(f2l_web_assets
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/web/"
+            "${CMAKE_BINARY_DIR}/web"
+        VERBATIM
+    )
+    add_dependencies(f2l_web f2l_web_assets)
 endif()
 
 if(F2L_BUILD_TESTS)

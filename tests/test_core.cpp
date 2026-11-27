@@ -1,6 +1,9 @@
 // tests/test_core.cpp -- headless: must build WITHOUT SFML on the include path.
+#include "cube_view.hpp"
 #include "rubik.hpp"
+#include "scramble.hpp"
 
+#include <array>
 #include <cstdio>
 #include <random>
 #include <string>
@@ -93,6 +96,26 @@ int main() {
     CHECK((Rubik::y + Rubik::R + -Rubik::y) == Rubik::B);
     CHECK((Rubik::x + Rubik::U + -Rubik::x) == Rubik::F);
     CHECK((Rubik::z + Rubik::R + -Rubik::z) == Rubik::U);
+
+    const f2l::Facelets solved_facelets = f2l::cube_facelets(id);
+    for (std::size_t face = 0; face < 6; ++face) {
+        std::array<int, 6> color_counts{};
+        for (std::size_t position = 0; position < 9; ++position)
+            ++color_counts[solved_facelets[face * 9 + position]];
+        CHECK(solved_facelets[face * 9 + 4] == face);
+        CHECK(color_counts[face] == 9);
+    }
+    const f2l::Facelets scrambled_facelets =
+        f2l::cube_facelets(Rubik::parse("R U F2 L' D B"));
+    std::array<int, 6> scrambled_color_counts{};
+    for (std::uint8_t color : scrambled_facelets)
+        ++scrambled_color_counts[color];
+    for (int count : scrambled_color_counts) CHECK(count == 9);
+
+    const std::string scramble_a = random_scramble(20, 42);
+    CHECK(scramble_a == random_scramble(20, 42));
+    CHECK(Rubik::parse(scramble_a) != id);
+    CHECK(random_scramble(0, 42).empty());
 
     CHECK(same("F R'F' R", "F R' F' R"));
     CHECK(same("U2R", "U2 R"));

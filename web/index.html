@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>F2L Search Studio</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="F2L Search Studio home">
+      <span class="brand-mark">F2L</span>
+      <span>SEARCH STUDIO</span>
+    </a>
+    <div class="local-note"><span class="local-dot"></span> Runs locally in your browser</div>
+  </header>
+
+  <main>
+    <section class="intro">
+      <div>
+        <p class="eyebrow">CUBE STATE ENGINE · WEBASSEMBLY</p>
+        <h1>Find the next move.</h1>
+        <p class="intro-copy">Set up a cube, choose a goal, and search with the same C++ engine used by F2L Recovery.</p>
+      </div>
+      <div id="engine-state" class="engine-state" role="status">Waiting for WebAssembly build</div>
+    </section>
+
+    <nav class="tabs" aria-label="Search tools">
+      <button class="tab active" type="button" data-panel="search-panel">Search a cube</button>
+      <button class="tab" type="button" data-panel="reconstruct-panel">Reconstruct missing F2L</button>
+    </nav>
+
+    <div class="workspace">
+      <section class="work-area">
+        <section id="search-panel" class="tool-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">GENERAL SEARCH</p>
+              <h2>Cube setup</h2>
+            </div>
+            <button id="reset-setup" class="button button-quiet" type="button">Reset cube</button>
+          </div>
+
+          <label for="setup-moves">Moves from solved</label>
+          <textarea id="setup-moves" rows="3" spellcheck="false" placeholder="R U R' U'"></textarea>
+          <div class="inline-controls">
+            <button id="apply-setup" class="button button-secondary" type="button">Apply setup</button>
+            <label class="compact-label" for="scramble-count">Random scramble</label>
+            <input id="scramble-count" type="number" min="0" max="1000" value="20">
+            <button id="add-scramble" class="button button-secondary" type="button">Add scramble</button>
+          </div>
+
+          <div class="divider"></div>
+          <h3>Search goal</h3>
+          <div class="form-grid">
+            <div>
+              <label for="goal-mode">Goal type</label>
+              <select id="goal-mode">
+                <option value="f2l">Solve F2L (preserve solved pieces)</option>
+                <option value="slot">Solve one F2L slot</option>
+                <option value="exact">Reach an exact target state</option>
+                <option value="target">Reach an F2L target state</option>
+              </select>
+            </div>
+            <div id="slot-control" class="conditional">
+              <label for="slot-index">Target slot</label>
+              <select id="slot-index">
+                <option value="0">Front-right</option>
+                <option value="1">Front-left</option>
+                <option value="2">Back-left</option>
+                <option value="3">Back-right</option>
+              </select>
+            </div>
+          </div>
+          <div id="target-control" class="conditional hidden">
+            <label for="target-moves">Target moves from solved</label>
+            <textarea id="target-moves" rows="2" spellcheck="false" placeholder="Leave empty for solved cube"></textarea>
+          </div>
+
+          <div class="form-grid options-grid">
+            <div>
+              <label for="max-depth">Maximum macro depth</label>
+              <input id="max-depth" type="number" min="0" max="32" value="4">
+            </div>
+            <div>
+              <label for="timeout">Timeout (seconds)</label>
+              <input id="timeout" type="number" min="0" max="3600" value="5">
+            </div>
+            <div>
+              <label for="beam-width">Beam width</label>
+              <input id="beam-width" type="number" min="1" max="5000" value="500">
+            </div>
+          </div>
+          <label class="check-row"><input id="pair-pruning" type="checkbox"> Use pair-distance pruning</label>
+          <p class="help">Macro depth counts trigger/transition steps, not individual face turns. Beam width applies to F2L-target searches; pair pruning applies to exact, F2L, and slot searches.</p>
+
+          <div class="action-row">
+            <button id="run-search" class="button button-primary" type="button">Search</button>
+            <button id="cancel-search" class="button button-danger hidden" type="button">Cancel</button>
+            <span id="search-status" class="inline-status" role="status">Ready</span>
+          </div>
+          <div id="search-result" class="result-card hidden" aria-live="polite"></div>
+        </section>
+
+        <section id="reconstruct-panel" class="tool-panel hidden">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">KNOWN CROSS + LAST LAYER</p>
+              <h2>Recover the missing F2L</h2>
+            </div>
+            <button id="load-preset" class="button button-quiet" type="button">Load sample solve</button>
+          </div>
+          <p class="help intro-help">Enter the scramble and known phase algorithms. The engine tests all cube frames, detects the cross orientation, then searches for an F2L state that completes the supplied last layer.</p>
+
+          <label for="recon-scramble">Scramble</label>
+          <textarea id="recon-scramble" rows="3" spellcheck="false"></textarea>
+          <label for="recon-cross">Known cross solution</label>
+          <textarea id="recon-cross" rows="2" spellcheck="false"></textarea>
+          <label for="recon-last-layer">Known last-layer algorithm</label>
+          <textarea id="recon-last-layer" rows="2" spellcheck="false"></textarea>
+
+          <div class="form-grid options-grid">
+            <div>
+              <label for="recon-depth">Maximum macro depth</label>
+              <input id="recon-depth" type="number" min="0" max="32" value="16">
+            </div>
+            <div>
+              <label for="recon-timeout">Search time (seconds)</label>
+              <input id="recon-timeout" type="number" min="0" max="3600" value="30">
+            </div>
+            <div>
+              <label for="recon-beam">Beam width</label>
+              <input id="recon-beam" type="number" min="1" max="5000" value="500">
+            </div>
+          </div>
+          <div class="action-row">
+            <button id="run-reconstruction" class="button button-primary" type="button">Find missing F2L</button>
+            <button id="cancel-reconstruction" class="button button-danger hidden" type="button">Cancel</button>
+            <span id="recon-status" class="inline-status" role="status">Ready</span>
+          </div>
+          <div id="recon-result" class="result-card hidden" aria-live="polite"></div>
+        </section>
+      </section>
+
+      <aside class="cube-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">LIVE STATE</p>
+            <h2>Cube view</h2>
+          </div>
+          <span id="frame-badge" class="pill">Solved</span>
+        </div>
+        <div id="cube-net" class="cube-net" aria-label="Cube facelet net"></div>
+        <div class="state-legend">Live checks · cross and all four F2L pairs</div>
+        <div id="cube-status" class="cube-status">Apply a move sequence to inspect the state.</div>
+        <div class="notation">
+          <strong>Notation accepted</strong>
+          <span>Faces, slices, rotations, wide turns, primes, and doubles (e.g. <code>Rw U2 x'</code>).</span>
+        </div>
+      </aside>
+    </div>
+    <footer>F2L Recovery · C++20 engine compiled to WebAssembly · No cube state is sent to a server</footer>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

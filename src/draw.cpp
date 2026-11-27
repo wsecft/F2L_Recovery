@@ -1,24 +1,13 @@
 #include <SFML/Graphics.hpp>
 #include <array>
 #include <unordered_map>
+#include "cube_view.hpp"
 #include "move.hpp"
 
 
 enum sides {
     U, R, F, D, L, B
 };
-
-inline static const int corner_facelets[8][3] = {
-    {U, R, F}, {U, F, L}, {U, L, B}, {U, B, R},
-    {D, F, R}, {D, L, F}, {D, B, L}, {D, R, B}
-};
-
-inline static const int edge_facelets[12][2] = {
-    {U, F}, {U, R}, {U, B}, {U, L},
-    {D, F}, {D, R}, {D, B}, {D, L},
-    {F, R}, {B, R}, {B, L}, {F, L}
-};
-
 
 inline static const std::unordered_map<sides, sf::Color> face_colors = {
     {U, sf::Color::White},
@@ -31,45 +20,11 @@ inline static const std::unordered_map<sides, sf::Color> face_colors = {
 
 std::array<std::array<sf::Color, 9>, 6> cube_to_facelets(const Move& cube) {
     std::array<std::array<sf::Color, 9>, 6> facelets{};
-
-    static const uint8_t edge_to_facelet[12][2] = {
-        {7,1},{5,1},{1,1},{3,1},//U edges
-        {1,7},{5,7},{7,7},{3,7},//D edges
-		{5,3},{3,5},{5,3},{3,5} //E slice edges
-    };
-    static const int corner_to_facelet[8][3] = {
-        {8,0,2}, {6, 0, 2}, {0, 0, 2}, {2, 0, 2}, // U corners
-		{2, 8, 6}, {0, 8, 6}, {6, 8, 6}, {8, 8, 6} // D corners
-    };
-    // Face center colors (they're fixed)
-    /*for (auto [face, color] : face_colors)
-        facelets[face][4] = color;*/
-
-    for (int i = 0; i < 12; ++i) {
-        int edge = cube.ep[i];
-        int ori = cube.eo[i];
-
-        for (int j = 0; j < 2; ++j) {
-			sides face = (sides)edge_facelets[i][j];
-            int pos = edge_to_facelet[i][j];
-            sf::Color color=face_colors.at((sides)edge_facelets[edge][ori^j]);
-            facelets[(sides)face][pos] = color;
-        }
-    }
-    for (int i = 0; i < 8; ++i) {
-        int corner = cube.cp[i];
-        int ori = cube.co[i];
-
-        for (int j = 0; j < 3; ++j) {
-            sides face = (sides)corner_facelets[i][j];
-            int pos = corner_to_facelet[i][j];
-            sf::Color color = face_colors.at((sides)corner_facelets[corner][(ori+j)%3]);
-            facelets[(sides)face][pos] = color;
-        }
-    }
-
+    const f2l::Facelets stickers = f2l::cube_facelets(cube);
     for (int i = 0; i < 6; ++i) {
-        facelets[(sides)i][4] = face_colors.at((sides)cube.centers[i]);
+        for (int position = 0; position < 9; ++position)
+            facelets[i][position] =
+                face_colors.at(static_cast<sides>(stickers[i * 9 + position]));
     }
     return facelets;
 }

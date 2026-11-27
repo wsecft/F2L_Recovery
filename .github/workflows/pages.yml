@@ -1,0 +1,73 @@
+name: Validate and deploy Pages
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Emscripten
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y emscripten nodejs
+
+      - name: Build and test native engine
+        run: |
+          cmake -S . -B build \
+            -DF2L_BUILD_APP=OFF \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_COMPILER=g++
+          cmake --build build --parallel
+          ctest --test-dir build --output-on-failure --no-tests=error
+
+      - name: Build browser WebAssembly app
+        run: |
+          emcmake cmake -S . -B build-wasm \
+            -DF2L_BUILD_APP=OFF \
+            -DF2L_BUILD_TESTS=OFF \
+            -DF2L_BUILD_WEB=ON \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-wasm --parallel
+
+      - name: Check browser scripts
+        run: |
+          node --check --input-type=module < web/app.js
+          node --check --input-type=module < web/search-worker.js
+          node tests/wasm_smoke.mjs
+          test -s build-wasm/web/index.html
+          test -s build-wasm/web/f2l_web.js
+          test -s build-wasm/web/f2l_web.wasm
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build-wasm/web
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - id: deployment
+        uses: actions/deploy-pages@v4

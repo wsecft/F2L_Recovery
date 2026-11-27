@@ -74,46 +74,53 @@ int main() {
 
     try {
         const UnknownF2LFixture& fixture = unknown_f2l_fixture;
-        const Move inspection = Rubik::parse(fixture.inspection);
-        const Move scramble = Rubik::parse(fixture.scramble);
-        const Move cross = Rubik::parse(fixture.cross);
         const Move last_layer = Rubik::parse(fixture.last_layer);
-
-        // Express the scramble and known cross in the x2 inspection frame.
-        const Move start = inspection + scramble + inspection + cross;
-        CHECK(f2l::cross_solved(start));
-
-        const Move target = -last_layer;
-        CHECK(f2l::f2l_solved(target));
-        const f2l::Goal completes_solve =
-            [last_layer, identity](const Move& state) {
-                return f2l::f2l_solved(state) &&
-                       f2l::normalise(state + last_layer) == identity;
-            };
-
         f2l::SearchOptions options;
         options.max_depth = 16;
         options.timeout = std::chrono::seconds{30};
-        const auto result =
-            f2l::search_f2l_target(start, target, options, 500);
+        const auto result = f2l::reconstruct_unknown_f2l(
+            fixture.scramble, fixture.cross, fixture.last_layer, options, 500);
         CHECK(result.has_value());
         if (result) {
-            const Move f2l_state = start + Rubik::parse(result->moves);
-            CHECK(result->macro_count <= options.max_depth);
-            CHECK(f2l::verify(start, result->moves, completes_solve));
-            CHECK(f2l::f2l_solved(f2l_state));
-            CHECK(f2l::normalise(f2l_state + last_layer) == identity);
+            CHECK(result->search.macro_count <= options.max_depth);
+            CHECK(f2l::cross_solved(result->start));
+            CHECK(f2l::f2l_solved(result->f2l_state));
+            CHECK(f2l::normalise(result->f2l_state + last_layer) == identity);
             std::printf("Recovered F2L for %.*s (%.*s, %.*s; %d macros): %s\n",
                         static_cast<int>(fixture.name.size()),
                         fixture.name.data(),
                         static_cast<int>(fixture.single_time.size()),
                         fixture.single_time.data(),
                         static_cast<int>(fixture.recorded_at.size()),
-                        fixture.recorded_at.data(), result->macro_count,
-                        result->moves.c_str());
+                        fixture.recorded_at.data(), result->search.macro_count,
+                        result->search.moves.c_str());
         }
     } catch (const std::exception& error) {
         std::printf("FAIL unknown-F2L search: %s\n", error.what());
+        ++failures;
+    }
+
+    try {
+        f2l::SearchOptions options;
+        options.max_depth = 0;
+        options.timeout = std::chrono::seconds{1};
+        const auto result = f2l::reconstruct_unknown_f2l(
+            "x2 R U x2", "U' R'", "", options);
+        CHECK(result.has_value());
+        if (result) {
+            CHECK(result->inspection_index == 2);
+            CHECK(result->inspection_moves == "x2");
+            CHECK(result->compatible_frame_count > 1);
+            CHECK(result->compatible_inspections.find("x2") !=
+                  std::string::npos);
+            CHECK(result->cross_face == "U");
+            CHECK(result->search.moves.empty());
+            CHECK(f2l::cross_solved(result->start));
+            CHECK(result->f2l_state == identity);
+        }
+    } catch (const std::exception& error) {
+        std::printf("FAIL generalized unknown-F2L search: %s\n",
+                    error.what());
         ++failures;
     }
 
