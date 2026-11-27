@@ -51,6 +51,10 @@ cmake --build . --config Release
 - `r` resets the cube.
 - `scramble [n]` applies a random scramble; the default is 20 moves.
 - `solve` runs F2L search in a background thread.
+- `unknown <seconds>` searches for the missing F2L in the pinned csTimer solve
+  for the full requested positive integer duration, using its known x2-frame
+  cross and last-layer algorithm. It prints each new solution that ties or
+  improves the shortest macro count found so far.
 - `quit` closes the application.
 - Any other input is parsed as cube moves.
 - Input is split by whitespace. Standard moves include `U R F D L B`,
@@ -67,7 +71,9 @@ cmake --build . --config Release
 - `src/draw.cpp`: cube facelet conversion and rendering.
 - `tests/test_core.cpp`: cube invariants and parser regression tests.
 - `tests/test_solver.cpp`: goals, normalisation, search, and solver output tests.
-- `tests/test_real_solves.cpp`: pinned reco.nz 3x3 reconstruction fixtures.
+- `tests/test_real_solves.cpp`: pinned reco.nz and CubeDB 3x3 reconstructions,
+  plus a csTimer case that searches for the missing F2L from its known cross
+  and last-layer algorithm.
 - `tests/test_canonical_f2l.cpp`: 41 representative reversible F2L macro
   cases pinned from the public [CFOP F2L dataset](https://github.com/andyjudson/cfop/blob/main/cfop-app/public/data/cfop-f2l.json).
 - `tests/bench_solver.cpp`: solver benchmark (not registered with CTest).

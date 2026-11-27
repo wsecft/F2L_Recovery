@@ -3,9 +3,12 @@
 
 #include <SFML/Graphics.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <exception>
 #include <iostream>
+#include <limits>
 #include <mutex>
 #include <optional>
 #include <queue>
@@ -14,6 +17,7 @@
 #include <stop_token>
 #include <string>
 #include <thread>
+#include <unordered_set>
 
 namespace {
 std::mutex output_mutex;
@@ -32,7 +36,7 @@ void console_input_thread() {
 
 void print_line(const std::string& line) {
     std::lock_guard lock(output_mutex);
-    std::cout << line << '\n';
+    std::cout << line << '\n' << std::flush;
 }
 }
 
@@ -109,6 +113,158 @@ int main() {
                                        std::to_string(options.max_depth));
                         solver_running.store(false);
                     });
+                }
+            } else if (line.rfind("unknown", 0) == 0) {
+                std::istringstream args(line);
+                std::string command;
+                std::string extra;
+                std::chrono::seconds::rep seconds = 0;
+                const auto max_seconds = std::chrono::duration_cast<
+                    std::chrono::seconds>(
+                        std::chrono::steady_clock::time_point::max() -
+                        std::chrono::steady_clock::now()).count();
+                if (!(args >> command >> seconds) || command != "unknown" ||
+                    seconds <= 0 || seconds > max_seconds || (args >> extra)) {
+                    print_line("error: syntax: unknown <positive-seconds>");
+                } else if (solver_running.exchange(true)) {
+                    print_line("solve already running");
+                } else {
+                    solve_thread = std::jthread(
+                        [seconds, &solver_running](std::stop_token stop) {
+                            try {
+                                const Move inspection = Rubik::parse("x2");
+                                const Move scramble = Rubik::parse(
+                                    "L2 U2 L D' F R F' R2 D2 L' B2 R' "
+                                    "D2 R2 U2 L B2 R D B");
+                                const Move cross = Rubik::parse("U' L F' L2 R' B2");
+                                const Move last_layer = Rubik::parse(
+                                    "F R' F' r U R U' r' U'");
+
+                                // Express the known cross in the x2 inspection frame.
+                                const Move start =
+                                    inspection + scramble + inspection + cross;
+                                if (!f2l::cross_solved(start)) {
+                                    print_line("error: built-in cross is not solved");
+                                } else {
+                                    const Move target = -last_layer;
+                                    const Move identity = Move::identity();
+                                    const f2l::Goal completes_solve =
+                                        [last_layer, identity](const Move& state) {
+                                            return f2l::f2l_solved(state) &&
+                                                f2l::normalise(state + last_layer) ==
+                                                    identity;
+                                        };
+
+                                constexpr int max_macro_depth = 16;
+                                constexpr std::size_t min_beam_width = 500;
+                                constexpr std::size_t max_beam_width = 10000;
+                                constexpr std::size_t beam_step = 500;
+                                constexpr auto search_slice =
+                                    std::chrono::seconds{5};
+                                // Cycle beam widths at the cap until the deadline.
+                                const auto deadline =
+                                    std::chrono::steady_clock::now() +
+                                    std::chrono::seconds{seconds};
+                                int best_macro_count = max_macro_depth + 1;
+                                std::unordered_set<std::string> reported;
+                                std::size_t beam_width = min_beam_width;
+                                bool widening = true;
+
+                                while (!stop.stop_requested()) {
+                                    const auto remaining =
+                                        std::chrono::duration_cast<
+                                            std::chrono::milliseconds>(
+                                            deadline -
+                                            std::chrono::steady_clock::now());
+                                    if (remaining <=
+                                        std::chrono::milliseconds::zero())
+                                        break;
+
+                                    f2l::SearchOptions options;
+                                    options.max_depth = std::min(
+                                        best_macro_count, max_macro_depth);
+                                    options.timeout = std::min(
+                                        remaining,
+                                        std::chrono::duration_cast<
+                                            std::chrono::milliseconds>(
+                                            search_slice));
+                                    options.stop = stop;
+                                    const auto result =
+                                        f2l::search_f2l_target(
+                                            start, target, options,
+                                            beam_width);
+                                    if (result) {
+                                        if (!f2l::verify(
+                                                start, result->moves,
+                                                completes_solve)) {
+                                            print_line(
+                                                "error: unknown search "
+                                                "returned an invalid F2L");
+                                            break;
+                                        }
+                                        if (result->macro_count <=
+                                                best_macro_count &&
+                                            reported.insert(result->moves)
+                                                .second) {
+                                            best_macro_count = std::min(
+                                                best_macro_count,
+                                                result->macro_count);
+                                            print_line(
+                                                "unknown F2L (" +
+                                                std::to_string(
+                                                    result->macro_count) +
+                                                " macros): " +
+                                                result->moves);
+                                        }
+                                    }
+
+                                    if (widening) {
+                                        if (beam_width >= max_beam_width) {
+                                            widening = false;
+                                            beam_width -= beam_step;
+                                        } else {
+                                            beam_width = std::min(
+                                                beam_width + beam_step,
+                                                max_beam_width);
+                                        }
+                                    } else if (beam_width <=
+                                               min_beam_width) {
+                                        widening = true;
+                                        beam_width += beam_step;
+                                    } else {
+                                        beam_width -= beam_step;
+                                    }
+                                }
+
+                                if (best_macro_count >
+                                    max_macro_depth) {
+                                    print_line(
+                                        stop.stop_requested()
+                                            ? "unknown search cancelled; "
+                                              "no F2L found"
+                                            : "unknown: no F2L found within "
+                                              "depth 16 and " +
+                                                  std::to_string(seconds) +
+                                                  " seconds");
+                                } else {
+                                    print_line(
+                                        std::string(
+                                            stop.stop_requested()
+                                                ? "unknown search cancelled; "
+                                                  "shortest found: "
+                                                : "unknown search finished; "
+                                                  "shortest found: ") +
+                                        std::to_string(best_macro_count) +
+                                        " macros");
+                                    }
+                                }
+                            } catch (const std::exception& error) {
+                                print_line(
+                                    std::string("unknown search failed: ") +
+                                    error.what());
+                            }
+                            solver_running.store(false);
+                        });
                 }
             } else if (line.rfind("recover ", 0) == 0) {
                 std::size_t separator = line.find('|');

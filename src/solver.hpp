@@ -2,6 +2,7 @@
 
 #include "rubik.hpp"
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstddef>
@@ -14,6 +15,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace detail {
@@ -340,6 +342,324 @@ std::optional<SearchResult> search(const Move& start, GoalCallable goal,
 
         if (dfs(dfs, start, depth, 0)) return result;
         if (stopped) break;
+    }
+    return std::nullopt;
+}
+
+inline std::optional<SearchResult> search_f2l_target(
+    const Move& start, const Move& target,
+    const SearchOptions& options = {}, std::size_t beam_width = 5000) {
+    if (options.max_depth < 0 || beam_width == 0) return std::nullopt;
+    const auto deadline = std::chrono::steady_clock::now() + options.timeout;
+
+    const Move canonical_target = normalise(target);
+    if (!f2l_solved(canonical_target)) return std::nullopt;
+
+    std::array<Move, 4> targets{};
+    std::array<Move, 4> inverse_targets{};
+    for (std::size_t i = 0; i < targets.size(); ++i) {
+        targets[i] = Rubik::y * static_cast<int>(i) + canonical_target;
+        inverse_targets[i] = -targets[i];
+        if (start == targets[i])
+            return SearchResult{"", 0, 0, {}};
+    }
+
+    struct ProjectionTable {
+        std::vector<std::uint8_t> distances;
+        std::uint32_t position_radix;
+        std::uint32_t orientation_radix;
+        std::uint32_t orientation_count;
+        std::uint8_t first_piece;
+        bool edges;
+
+        std::uint32_t key(const Move& state) const {
+            std::array<std::uint8_t, 4> positions{};
+            std::array<std::uint8_t, 4> orientations{};
+            const std::uint8_t count = edges ? 12 : 8;
+            for (std::uint8_t position = 0; position < count; ++position) {
+                const std::uint8_t piece =
+                    edges ? state.ep[position] : state.cp[position];
+                if (piece < first_piece || piece >= first_piece + 4)
+                    continue;
+                const std::size_t index = piece - first_piece;
+                positions[index] = position;
+                orientations[index] =
+                    edges ? state.eo[position] : state.co[position];
+            }
+
+            std::uint32_t position_key = 0;
+            std::uint32_t position_factor = 1;
+            std::uint32_t orientation_key = 0;
+            std::uint32_t orientation_factor = 1;
+            for (std::size_t i = 0; i < positions.size(); ++i) {
+                position_key += positions[i] * position_factor;
+                position_factor *= position_radix;
+                orientation_key += orientations[i] * orientation_factor;
+                orientation_factor *= orientation_radix;
+            }
+            return position_key * orientation_count + orientation_key;
+        }
+    };
+
+    struct HeuristicTables {
+        std::array<std::array<std::uint8_t, 576>, 4> pairs;
+        std::array<ProjectionTable, 4> pieces;
+    };
+
+    static const HeuristicTables tables = [] {
+        HeuristicTables result{};
+        const Slot slots[] = {FR, FL, BL, BR};
+
+        for (std::size_t si = 0; si < 4; ++si) {
+            auto& distances = result.pairs[si];
+            distances.fill(std::numeric_limits<std::uint8_t>::max());
+            Move identity = Move::identity();
+            distances[pair_key(identity, slots[si])] = 0;
+            std::deque<Move> queue{identity};
+
+            while (!queue.empty()) {
+                Move current = queue.front();
+                queue.pop_front();
+                const std::uint8_t next_distance =
+                    static_cast<std::uint8_t>(
+                        distances[pair_key(current, slots[si])] + 1u);
+                for (const Move& inverse_macro : detail::invCombined) {
+                    Move predecessor = current + inverse_macro;
+                    const std::uint16_t key = pair_key(predecessor, slots[si]);
+                    if (distances[key] !=
+                        std::numeric_limits<std::uint8_t>::max())
+                        continue;
+                    distances[key] = next_distance;
+                    queue.push_back(predecessor);
+                }
+            }
+        }
+
+        auto make_projection = [](bool edges, std::uint8_t first_piece) {
+            ProjectionTable table{
+                {},
+                edges ? 12u : 8u,
+                edges ? 2u : 3u,
+                edges ? 16u : 81u,
+                first_piece,
+                edges
+            };
+            const std::uint32_t position_count =
+                table.position_radix * table.position_radix *
+                table.position_radix * table.position_radix;
+            table.distances.assign(
+                position_count * table.orientation_count,
+                std::numeric_limits<std::uint8_t>::max());
+
+            std::array<std::uint8_t, 4> positions{};
+            std::array<std::uint8_t, 4> orientations{};
+            for (std::size_t i = 0; i < positions.size(); ++i)
+                positions[i] = static_cast<std::uint8_t>(first_piece + i);
+
+            const auto encode = [&](const auto& pos, const auto& ori) {
+                std::uint32_t position_key = 0;
+                std::uint32_t position_factor = 1;
+                std::uint32_t orientation_key = 0;
+                std::uint32_t orientation_factor = 1;
+                for (std::size_t i = 0; i < pos.size(); ++i) {
+                    position_key += pos[i] * position_factor;
+                    position_factor *= table.position_radix;
+                    orientation_key += ori[i] * orientation_factor;
+                    orientation_factor *= table.orientation_radix;
+                }
+                return position_key * table.orientation_count +
+                       orientation_key;
+            };
+            const auto decode = [](std::uint32_t value, std::uint32_t radix) {
+                std::array<std::uint8_t, 4> decoded{};
+                for (std::uint8_t& digit : decoded) {
+                    digit = static_cast<std::uint8_t>(value % radix);
+                    value /= radix;
+                }
+                return decoded;
+            };
+
+            const std::uint32_t root = encode(positions, orientations);
+            table.distances[root] = 0;
+            std::deque<std::uint32_t> queue{root};
+            while (!queue.empty()) {
+                const std::uint32_t current_key = queue.front();
+                queue.pop_front();
+                const std::uint32_t orientation_key =
+                    current_key % table.orientation_count;
+                auto current_positions =
+                    decode(current_key / table.orientation_count,
+                           table.position_radix);
+                auto current_orientations =
+                    decode(orientation_key, table.orientation_radix);
+                const std::uint8_t next_distance =
+                    static_cast<std::uint8_t>(
+                        table.distances[current_key] + 1u);
+
+                for (std::size_t k = 0; k < detail::combined.size(); ++k) {
+                    auto next_positions = current_positions;
+                    auto next_orientations = current_orientations;
+                    for (std::size_t i = 0; i < next_positions.size(); ++i) {
+                        const std::uint8_t destination = edges
+                            ? detail::combined[k].ep[current_positions[i]]
+                            : detail::combined[k].cp[current_positions[i]];
+                        next_positions[i] = destination;
+                        if (edges) {
+                            next_orientations[i] ^=
+                                detail::invCombined[k].eo[destination];
+                        } else {
+                            next_orientations[i] = static_cast<std::uint8_t>(
+                                (next_orientations[i] +
+                                 detail::invCombined[k].co[destination]) % 3u);
+                        }
+                    }
+
+                    const std::uint32_t next_key =
+                        encode(next_positions, next_orientations);
+                    if (table.distances[next_key] !=
+                        std::numeric_limits<std::uint8_t>::max())
+                        continue;
+                    table.distances[next_key] = next_distance;
+                    queue.push_back(next_key);
+                }
+            }
+            return table;
+        };
+
+        result.pieces = {
+            make_projection(false, 0),
+            make_projection(true, 0),
+            make_projection(false, 4),
+            make_projection(true, 4)
+        };
+        return result;
+    }();
+
+    const Slot slots[] = {FR, FL, BL, BR};
+    auto goal_index = [&](const Move& state) -> std::size_t {
+        for (std::size_t i = 0; i < targets.size(); ++i)
+            if (state.centers == targets[i].centers) return i;
+        return targets.size();
+    };
+    auto heuristic = [&](const Move& state, std::size_t target_index) {
+        const Move relative = inverse_targets[target_index] + state;
+        std::uint8_t maximum = 0;
+        std::uint32_t total = 0;
+
+        for (std::size_t i = 0; i < 4; ++i) {
+            const std::uint8_t distance =
+                tables.pairs[i][pair_key(relative, slots[i])];
+            maximum = std::max(maximum, distance);
+            total += distance;
+        }
+        for (const ProjectionTable& table : tables.pieces) {
+            const std::uint8_t distance =
+                table.distances[table.key(relative)];
+            maximum = std::max(maximum, distance);
+            total += distance;
+        }
+        return std::pair{maximum, total};
+    };
+
+    struct BeamNode {
+        Move state;
+        std::uint32_t parent;
+        std::uint16_t macro;
+    };
+    struct Candidate {
+        Move state;
+        std::uint32_t parent;
+        std::uint16_t macro;
+        std::uint8_t lower_bound;
+        std::uint32_t total_distance;
+    };
+
+    std::vector<BeamNode> nodes{{start, 0, 0}};
+    std::vector<std::uint32_t> frontier{0};
+    std::unordered_set<Move> visited{start};
+    std::uint64_t expanded = 0;
+    if (options.stop.stop_requested() ||
+        std::chrono::steady_clock::now() >= deadline)
+        return std::nullopt;
+
+    for (int depth = 1; depth <= options.max_depth; ++depth) {
+        std::vector<Candidate> candidates;
+        candidates.reserve(frontier.size() * detail::combined.size());
+        bool stopped = false;
+
+        for (std::uint32_t parent : frontier) {
+            for (std::size_t k = 0; k < detail::combined.size(); ++k) {
+                if ((++expanded & 1023u) == 0 &&
+                    (options.stop.stop_requested() ||
+                     std::chrono::steady_clock::now() >= deadline)) {
+                    stopped = true;
+                    break;
+                }
+                if (parent != 0 &&
+                    detail::combined[k] ==
+                        detail::invCombined[nodes[parent].macro])
+                    continue;
+
+                Move next = nodes[parent].state + detail::combined[k];
+                const std::size_t target_index = goal_index(next);
+                if (target_index < targets.size() &&
+                    next == targets[target_index]) {
+                    std::vector<std::size_t> path;
+                    for (std::uint32_t at = parent; at != 0;
+                         at = nodes[at].parent)
+                        path.push_back(nodes[at].macro);
+                    std::reverse(path.begin(), path.end());
+                    path.push_back(k);
+                    return SearchResult{
+                        render(path), static_cast<int>(path.size()),
+                        expanded, std::move(path)
+                    };
+                }
+                if (visited.contains(next) ||
+                    target_index == targets.size())
+                    continue;
+
+                const auto [lower_bound, total_distance] =
+                    heuristic(next, target_index);
+                if (lower_bound ==
+                        std::numeric_limits<std::uint8_t>::max() ||
+                    lower_bound > options.max_depth - depth)
+                    continue;
+                candidates.push_back({
+                    std::move(next), parent, static_cast<std::uint16_t>(k),
+                    lower_bound, total_distance
+                });
+            }
+            if (stopped) break;
+        }
+        if (stopped || candidates.empty()) return std::nullopt;
+
+        std::stable_sort(candidates.begin(), candidates.end(),
+                         [](const Candidate& left, const Candidate& right) {
+            if (left.lower_bound != right.lower_bound)
+                return left.lower_bound < right.lower_bound;
+            return left.total_distance < right.total_distance;
+        });
+
+        std::unordered_set<Move> selected;
+        selected.reserve(beam_width);
+        std::vector<std::uint32_t> next_frontier;
+        next_frontier.reserve(beam_width);
+        for (Candidate& candidate : candidates) {
+            if (visited.contains(candidate.state) ||
+                !selected.insert(candidate.state).second)
+                continue;
+            const std::uint32_t index =
+                static_cast<std::uint32_t>(nodes.size());
+            visited.insert(candidate.state);
+            nodes.push_back({
+                std::move(candidate.state), candidate.parent, candidate.macro
+            });
+            next_frontier.push_back(index);
+            if (next_frontier.size() == beam_width) break;
+        }
+        if (next_frontier.empty()) return std::nullopt;
+        frontier = std::move(next_frontier);
     }
     return std::nullopt;
 }
